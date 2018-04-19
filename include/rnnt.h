@@ -1,6 +1,6 @@
-/** \file ctc.h
+/** \file rnnt.h
  * Contains a simple C interface to call fast CPU and GPU based computation
- * of the CTC loss.
+ * of the RNNT loss.
  */
 
 #pragma once
@@ -21,7 +21,7 @@ typedef enum {
     RNNT_STATUS_UNKNOWN_ERROR = 4
 } rnntStatus_t;
 
-/** Returns a single integer which specifies the API version of the warpctc library */
+/** Returns a single integer which specifies the API version of the warprnnt library */
 int get_warprnnt_version();
 
 /** Returns a string containing a description of status that was passed in
@@ -55,21 +55,21 @@ struct rnntOptions {
     int blank_label;
 };
 
-/** Compute the connectionist temporal classification loss between a sequence
+/** Compute the RNN Transducer loss between a sequence
  *  of probabilities and a ground truth labeling.  Optionally compute the
  *  gradient with respect to the inputs.
  * \param [in] activations pointer to the activations in either CPU or GPU
  *             addressable memory, depending on info.  We assume a fixed
- *             memory layout for this 3 dimensional tensor, which has dimension
- *             (t, n, p), where t is the time index, n is the minibatch index,
- *             and p indexes over probabilities of each symbol in the alphabet.
- *             The memory layout is (t, n, p) in C order (slowest to fastest changing
- *             index, aka row-major), or (p, n, t) in Fortran order (fastest to slowest
- *             changing index, aka column-major). We also assume strides are equal to
+ *             memory layout for this 4 dimensional tensor, which has dimension
+ *             (b, t, u, v), where b is the minibatch index, t is the time index,
+ *             u is the prediction index, and v indexes over probabilities 
+ *             of each symbol in the alphabet.
+ *             The memory layout is (b, t, u, v) in C order (slowest to fastest changing
+ *             index, aka row-major). We also assume strides are equal to
  *             dimensions - there is no padding between dimensions.
- *             More precisely, element (t, n, p), for a problem with mini_batch examples
+ *             More precisely, element (b, t, u, v), for a problem with mini_batch examples
  *             in the mini batch, and alphabet_size symbols in the alphabet, is located at:
- *             activations[(t * mini_batch + n) * alphabet_size + p]
+ *             activations[((b * max_time + t) * max_u + u) * alphabet_size + v]
  * \param [out] gradients if not NULL, then gradients are computed.  Should be
  *              allocated in the same memory space as probs and memory
  *              ordering is identical.
@@ -82,6 +82,8 @@ struct rnntOptions {
  * \param [in]  alphabet_size The number of possible output symbols.  There
  *              should be this many probabilities for each time step.
  * \param [in]  mini_batch How many examples in a minibatch.
+ * \param [in]  maxT maximum length along time dimension.
+ * \param [in]  maxU maximum length along prediction dimention.
  * \param [out] costs Always in CPU memory.  The cost of each example in the
  *              minibatch.
  * \param [in,out] workspace In same memory space as probs. Should be of
@@ -105,15 +107,9 @@ rnntStatus_t compute_rnnt_loss(float* const activations,
                              int blank_label);
 
 
-/** For a given set of labels and minibatch size return the required workspace
- *  size.  This will need to be allocated in the same memory space as your
+/** For a given set of max sequence length and minibatch size return the required 
+ *  workspace size. This will need to be allocated in the same memory space as your
  *  probabilities.
- * \param [in]  label_lengths Always in CPU memory. The length of each label
- *              for each example in the minibatch.
- * \param [in]  input_lengths Always in CPU memory.  The number of time steps
- *              for each sequence in the minibatch.
- * \param [in]  alphabet_size How many symbols in the alphabet or, equivalently,
- *              the number of probabilities at each time step
  * \param [in]  mini_batch How many examples in a minibatch.
  * \param [in]  info see struct rnntOptions
  * \param [out] size_bytes is pointer to a scalar where the memory

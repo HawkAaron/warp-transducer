@@ -5,10 +5,6 @@
 #include <rnnt.h>
 
 #include "detail/cpu_rnnt.h"
-// #ifdef __CUDACC__
-//     #include "detail/gpu_ctc.h"
-// #endif
-
 
 extern "C" {
 

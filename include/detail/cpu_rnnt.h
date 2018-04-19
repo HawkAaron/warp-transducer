@@ -163,7 +163,7 @@ CpuRNNT<ProbT>::cost_and_grad_kernel(const ProbT* const log_probs, ProbT* grad,
                                               llForward);
 
     ProbT diff = std::abs(llForward - llBackward);
-    if (diff > 1e-8) {
+    if (diff > 1e-1) {
         printf("WARNING: Forward backward likelihood mismatch %f\n", diff);
     }
 
@@ -243,7 +243,11 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
     for (int t = 0; t < T; ++t) {
         for (int u = 0; u < U; ++u) {
             for (int v = 0; v < alphabet_size_; ++v) {
-                grad[idx(t, u, v)] = -std::exp(log_probs[idx(t, u, v)] + grad[idx(t, u, v)] - loglike);
+                ProbT g = grad[idx(t, u, v)];
+                // NOTE if g is zero, means the gradient in this point is zero.
+                if (g != 0) {
+                    grad[idx(t, u, v)] = -std::exp(log_probs[idx(t, u, v)] + g - loglike);
+                }
             }
         }
     }
@@ -280,8 +284,8 @@ CpuRNNT<ProbT>::cost_and_grad(ProbT* const log_probs,
         const int U = label_lengths[mb] + 1; // Number of labels in transcription
         const int batch_size = maxT_ * maxU_ * alphabet_size_;
 
-        costs[mb] = cost_and_grad_kernel(grads + mb * batch_size,
-                             log_probs + mb * batch_size,
+        costs[mb] = cost_and_grad_kernel(log_probs + mb * batch_size,
+                             grads + mb * batch_size,
                              flat_labels + std::accumulate(label_lengths, label_lengths + mb, 0),
                              mb, T, U, mb * per_minibatch_bytes);
     }

@@ -11,12 +11,13 @@ from ._warp_rnnt import *
 class _RNNT(Function):
     @staticmethod
     def forward(ctx, acts, labels, act_lens, label_lens,
-                        size_average, blank_label):
-        acts = acts.contiguous()
+                        size_average=False, blank_label=0):
+        is_cuda = True if acts.is_cuda else False
+        acts = acts.cpu().contiguous()
         loss_func = warp_rnnt.cpu_rnnt
-        grads = torch.zeros_like(acts) if acts.requires_grad else torch.zeros(0)
+        grads = torch.zeros_like(acts) if ctx.requires_grad else torch.zeros(0)
         minibatch_size = acts.size(0)
-        costs = torch.zeros(minibatch_size)
+        costs = torch.zeros(minibatch_size).cpu()
         loss_func(acts,
                   labels,
                   act_lens,
@@ -25,20 +26,23 @@ class _RNNT(Function):
                   grads,
                   blank_label)
 
-        costs = Variable(torch.FloatTensor([costs.sum()]))
+        costs = torch.FloatTensor([costs.sum()])
+
+        if is_cuda:
+            costs = costs.cuda()
+            grads = grads.cuda()
 
         if size_average:
             # Compute the avg. log-probability per batch sample.
             grads = grads / minibatch_size
             costs = costs / minibatch_size
 
-        ctx.save_for_backward(Variable(grads))
+        ctx.grads = Variable(grads)
         return costs
 
     @staticmethod
     def backward(ctx, grad_output):
-        grads, = ctx.saved_variables
-        return grads, None, None, None, None, None
+        return ctx.grads, None, None, None, None, None
 
 
 class RNNTLoss(Module):
@@ -67,5 +71,5 @@ class RNNTLoss(Module):
         _assert_no_grad(labels)
         _assert_no_grad(act_lens)
         _assert_no_grad(label_lens)
-        return self.ctc(acts, labels, act_lens, label_lens, self.size_average,
-                        self.length_average)
+        return self.rnnt(acts, labels, act_lens, label_lens, 
+                        self.size_average, self.blank_label)

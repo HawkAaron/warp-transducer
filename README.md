@@ -13,7 +13,7 @@ new warp-rnnt clone you could build WarpRNNT like this:
 git clone https://github.com/HawkAaron/warp-transducer
 cd warp-transducer
 mkdir build; cd build
-cmake ..
+cmake -D WITH_GPU=OFF ..
 make
 ```
 

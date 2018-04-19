@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 from torch.utils.ffi import create_extension
 
 extra_compile_args = ['-std=c++11', '-fPIC']
-warp_ctc_path = "../build"
+warp_rnnt_path = "../build"
 
 if "CUDA_HOME" not in os.environ:
     print("CUDA_HOME not found in the environment so building "

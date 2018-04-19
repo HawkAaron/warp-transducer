@@ -91,7 +91,7 @@ struct rnntOptions {
  *  \return Status information
  *
  * */
-rnntStatus_t compute_rnnt_loss(const float* const activations,
+rnntStatus_t compute_rnnt_loss(float* const activations,
                              float* gradients,
                              const int* const flat_labels,
                              const int* const label_lengths,
@@ -122,10 +122,9 @@ rnntStatus_t compute_rnnt_loss(const float* const activations,
  *
  *  \return Status information
  **/
-rnntStatus_t get_workspace_size(const int* const label_lengths,
-                               const int* const input_lengths,
+rnntStatus_t get_workspace_size(int maxT, int maxU,
                                int alphabet_size, int minibatch,
-                               rnntOptions info,
+                               bool gpu,
                                size_t* size_bytes);
 
 #ifdef __cplusplus

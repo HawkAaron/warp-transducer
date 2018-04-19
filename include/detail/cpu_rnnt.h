@@ -43,7 +43,7 @@ public:
                               const int* const label_lengths,
                               const int* const input_lengths);
     
-    rnntStatus_t score_forward(const ProbT* const log_probs,
+    rnntStatus_t score_forward(ProbT* const log_probs,
                               ProbT* costs,
                               const int* const flat_labels,
                               const int* const label_lengths,
@@ -252,7 +252,7 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
 }
 
 template<typename ProbT>
-void
+rnntStatus_t
 CpuRNNT<ProbT>::cost_and_grad(ProbT* const log_probs,
                        ProbT* grads,
                        ProbT* costs,
@@ -290,8 +290,8 @@ CpuRNNT<ProbT>::cost_and_grad(ProbT* const log_probs,
 }
 
 template<typename ProbT>
-void
-CpuRNNT<ProbT>::score_forward(const ProbT* const log_probs, 
+rnntStatus_t
+CpuRNNT<ProbT>::score_forward(ProbT* const log_probs, 
                        ProbT* costs,
                        const int* const flat_labels,
                        const int* const label_lengths,

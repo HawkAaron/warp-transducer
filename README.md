@@ -5,19 +5,19 @@ A fast parallel implementation of RNN Transducer.
 
 Install [PyTorch](https://github.com/pytorch/pytorch#installation).
 
-`WARP_CTC_PATH` should be set to the location of a built WarpCTC
-(i.e. `libwarpctc.so`).  This defaults to `../build`, so from within a
-new warp-ctc clone you could build WarpCTC like this:
+`WARP_RNNT_PATH` should be set to the location of a built WarpRNNT
+(i.e. `libwarprnnt.so`).  This defaults to `../build`, so from within a
+new warp-rnnt clone you could build WarpRNNT like this:
 
 ```bash
-git clone https://github.com/SeanNaren/warp-ctc.git
-cd warp-ctc
+git clone https://github.com/HawkAaron/warp-transducer
+cd warp-transducer
 mkdir build; cd build
 cmake ..
 make
 ```
 
-Otherwise, set `WARP_CTC_PATH` to wherever you have `libwarpctc.so`
+Otherwise, set `WARP_RNNT_PATH` to wherever you have `libwarprnnt.so`
 installed. If you have a GPU, you should also make sure that
 `CUDA_HOME` is set to the home cuda directory (i.e. where
 `include/cuda.h` and `lib/libcudart.so` live). For example:
@@ -37,7 +37,7 @@ If you try the above and get a dlopen error on OSX with anaconda3 (as recommende
 cd ../pytorch_binding
 python setup.py install
 cd ../build
-cp libwarpctc.dylib /Users/$WHOAMI/anaconda3/lib
+cp libwarprnnt.dylib /Users/$WHOAMI/anaconda3/lib
 ```
 This will resolve the library not loaded error. This can be easily modified to work with other python installs if needed.
 

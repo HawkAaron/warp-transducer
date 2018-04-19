@@ -75,12 +75,11 @@ rnntStatus_t compute_rnnt_loss(float* const activations, //BTUV
 
 
 rnntStatus_t get_workspace_size(int maxT, int maxU,
-                               int alphabet_size, int minibatch,
+                               int minibatch,
                                bool gpu,
                                size_t* size_bytes)
 {
-    if (alphabet_size <= 0 ||
-        minibatch <= 0 ||
+    if (minibatch <= 0 ||
         maxT <= 0 ||
         maxU <= 0)
         return RNNT_STATUS_INVALID_VALUE;
@@ -91,7 +90,7 @@ rnntStatus_t get_workspace_size(int maxT, int maxU,
     size_t per_minibatch_bytes = 0;
 
     // alphas & betas
-    per_minibatch_bytes += sizeof(float) * maxT * maxU * alphabet_size * 2;
+    per_minibatch_bytes += sizeof(float) * maxT * maxU * 2;
 
     *size_bytes = per_minibatch_bytes * minibatch;
 

@@ -52,7 +52,7 @@ public:
 private:
     class CpuRNNT_metadata {
     public:
-        CpuRNNT_metadata(int mb, int T, int U, int alphabet_size, 
+        CpuRNNT_metadata(int mb, int T, int U, 
                          void* workspace, size_t bytes_used);
         ProbT* alphas;
         ProbT* betas;
@@ -94,7 +94,6 @@ private:
 
 template<typename ProbT>
 CpuRNNT<ProbT>::CpuRNNT_metadata::CpuRNNT_metadata(int mb, int T, int U,
-                                            int alphabet_size,
                                             void* workspace, size_t bytes_used) {
     
     alphas = reinterpret_cast<ProbT *>(static_cast<char *>(workspace) + bytes_used);
@@ -153,7 +152,7 @@ CpuRNNT<ProbT>::cost_and_grad_kernel(const ProbT* const log_probs, ProbT* grad,
                               const int* const labels,
                               int mb, int T, int U, size_t bytes_used) {
     
-    CpuRNNT_metadata rnntm(mb, T, U, alphabet_size_, workspace_, bytes_used);
+    CpuRNNT_metadata rnntm(mb, T, U, workspace_, bytes_used);
 
     ProbT llForward = compute_alphas(log_probs, T, U, rnntm.alphas, labels);
     ProbT llBackward = compute_betas_and_grad(grad, log_probs, T, U,
@@ -307,7 +306,7 @@ CpuRNNT<ProbT>::score_forward(ProbT* const log_probs,
     size_t per_minibatch_bytes = 0;
 
     // alphas & betas
-    per_minibatch_bytes += sizeof(ProbT) * maxT_ * maxU_ * alphabet_size_ * 2;
+    per_minibatch_bytes += sizeof(ProbT) * maxT_ * maxU_ * 2;
 
     //
     // log_softmax(activations, log_probs, input_lengths);
@@ -318,7 +317,7 @@ CpuRNNT<ProbT>::score_forward(ProbT* const log_probs,
         const int U = label_lengths[mb] + 1; // Number of labels in transcription
         const int batch_size = maxT_ * maxU_ * alphabet_size_;
 
-        CpuRNNT_metadata rnntm(mb, T, U, alphabet_size_, workspace_, 0);
+        CpuRNNT_metadata rnntm(mb, T, U, workspace_, mb * per_minibatch_bytes);
 
         costs[mb] = -compute_alphas(log_probs + mb * batch_size, T, U, 
                             rnntm.alphas, 

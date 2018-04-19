@@ -33,7 +33,7 @@ extern "C" int cpu_rnnt(THFloatTensor *log_probs,
     int alphabet_size = log_probs->size[3];
 
     size_t cpu_size_bytes;
-    get_workspace_size(maxT, maxU, alphabet_size, minibatch_size,
+    get_workspace_size(maxT, maxU, minibatch_size,
                        false, &cpu_size_bytes);
 
     float* cpu_workspace = (float*) new unsigned char[cpu_size_bytes];

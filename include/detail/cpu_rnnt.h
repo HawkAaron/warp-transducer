@@ -243,7 +243,7 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
     for (int t = 0; t < T; ++t) {
         for (int u = 0; u < U; ++u) {
             for (int v = 0; v < alphabet_size_; ++v) {
-                grad[idx(t, u, v)] = -std::exp(grad[idx(t, u, v)] - loglike);
+                grad[idx(t, u, v)] = -std::exp(log_probs[idx(t, u, v)] + grad[idx(t, u, v)] - loglike);
             }
         }
     }

@@ -76,7 +76,7 @@ private:
     int alphabet_size_; // Number of characters plus blank
     void* workspace_;
     int blank_;
-    int batch_first;
+    bool batch_first;
 
     // Only for seperate input
     void log_softmax(const ProbT* const activations, ProbT* log_probs,
@@ -229,7 +229,7 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
 
     ProbT loglike = betas[0];
 
-    std::fill(grad, grad + maxT_ * maxU_ * alphabet_size_, 0);
+    // if (batch_first) std::fill(grad, grad + maxT_ * maxU_ * alphabet_size_, 0);
     // Gradients w.r.t. log probabilities
     grad[idx(T-1, U-1, blank_)] = alphas[idx(T-1, U-1)];
     for (int t = 0; t < T-1; ++t) {

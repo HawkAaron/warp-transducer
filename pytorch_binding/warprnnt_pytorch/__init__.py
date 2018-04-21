@@ -11,7 +11,7 @@ from ._warp_rnnt import *
 class _RNNT(Function):
     @staticmethod
     def forward(ctx, acts, labels, act_lens, label_lens,
-                    size_average=False, blank_label=0, batch_first=True):
+                    size_average, blank_label, batch_first):
         is_cuda = True if acts.is_cuda else False
         acts = acts.cpu().contiguous()
         loss_func = warp_rnnt.cpu_rnnt
@@ -53,7 +53,7 @@ class RNNTLoss(Module):
             (default: `False`)
         blank_label (bool): default 0
     """
-    def __init__(self, size_average=False, blank_label=0, batch_first=False):
+    def __init__(self, size_average=False, blank_label=0, batch_first=True):
         super(RNNTLoss, self).__init__()
         self.rnnt = _RNNT.apply
         self.size_average = size_average

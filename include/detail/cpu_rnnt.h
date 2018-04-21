@@ -27,9 +27,9 @@ template<typename ProbT>
 class CpuRNNT {
 public:
     // Noncopyable
-    CpuRNNT(int minibatch, int maxT, int maxU, int alphabet_size, void* workspace, int blank) :
+    CpuRNNT(int minibatch, int maxT, int maxU, int alphabet_size, void* workspace, int blank, bool batch_first) :
         minibatch_(minibatch), maxT_(maxT), maxU_(maxU), alphabet_size_(alphabet_size), 
-        workspace_(workspace), blank_(blank) {
+        workspace_(workspace), blank_(blank), batch_first(batch_first) {
 
     };
 
@@ -52,18 +52,19 @@ public:
 private:
     class CpuRNNT_metadata {
     public:
-        CpuRNNT_metadata(int mb, int T, int U, 
-                         void* workspace, size_t bytes_used);
+        CpuRNNT_metadata(int T, int U, void* workspace, size_t bytes_used);
         ProbT* alphas;
         ProbT* betas;
     };
 
     class CpuRNNT_index {
     public:
-        CpuRNNT_index(int U, int maxU, int alphabet_size);
+        CpuRNNT_index(int U, int maxU, int minibatch, int alphabet_size, bool batch_first);
         int U;
         int maxU;
+        int minibatch;
         int alphabet_size;
+        bool batch_first;
 
         int operator()(int t, int u);
         int operator()(int t, int u, int v);
@@ -75,6 +76,7 @@ private:
     int alphabet_size_; // Number of characters plus blank
     void* workspace_;
     int blank_;
+    int batch_first;
 
     // Only for seperate input
     void log_softmax(const ProbT* const activations, ProbT* log_probs,
@@ -93,8 +95,7 @@ private:
 };
 
 template<typename ProbT>
-CpuRNNT<ProbT>::CpuRNNT_metadata::CpuRNNT_metadata(int mb, int T, int U,
-                                            void* workspace, size_t bytes_used) {
+CpuRNNT<ProbT>::CpuRNNT_metadata::CpuRNNT_metadata(int T, int U, void* workspace, size_t bytes_used) {
     
     alphas = reinterpret_cast<ProbT *>(static_cast<char *>(workspace) + bytes_used);
     bytes_used += sizeof(ProbT) * T * U;
@@ -105,8 +106,8 @@ CpuRNNT<ProbT>::CpuRNNT_metadata::CpuRNNT_metadata(int mb, int T, int U,
 }
 
 template<typename ProbT>
-CpuRNNT<ProbT>::CpuRNNT_index::CpuRNNT_index(int U, int maxU, int alphabet_size) : 
-                        U(U), maxU(maxU), alphabet_size(alphabet_size) {}
+CpuRNNT<ProbT>::CpuRNNT_index::CpuRNNT_index(int U, int maxU, int minibatch, int alphabet_size, bool batch_first) : 
+                    U(U), maxU(maxU), minibatch(minibatch), alphabet_size(alphabet_size), batch_first(batch_first) {}
 
 template<typename ProbT>
 inline int CpuRNNT<ProbT>::CpuRNNT_index::operator()(int t, int u) {
@@ -115,7 +116,9 @@ inline int CpuRNNT<ProbT>::CpuRNNT_index::operator()(int t, int u) {
 
 template<typename ProbT>
 inline int CpuRNNT<ProbT>::CpuRNNT_index::operator()(int t, int u, int v) {
-    return (t * maxU + u) * alphabet_size + v;
+    if (batch_first)
+        return (t * maxU + u) * alphabet_size + v;
+    return (t * maxU + u) * minibatch * alphabet_size + v;
 }
 
 template<typename ProbT>
@@ -127,7 +130,8 @@ CpuRNNT<ProbT>::log_softmax(const ProbT* const activations, ProbT* log_probs,
     for (int mb = 0; mb < minibatch_; ++mb) {
         for (int t = 0; t < input_lengths[mb]; ++t) {
             for (int u = 0; u <= label_lengths[mb]; ++u) {
-                int col_offset = (mb * maxT_ * maxU_ + t * maxU_ + u) * alphabet_size_;
+                int col_offset = ((t * maxU_ + u) * minibatch_ + mb) * alphabet_size_;
+                if (batch_first) col_offset = ((mb * maxT_ + t) * maxU_ + u) * alphabet_size_;
                 ProbT max_activation = neg_inf<ProbT>();
                 for (int v = 0; v < alphabet_size_; ++v)
                     max_activation = std::max(max_activation, activations[v + col_offset]);
@@ -152,7 +156,7 @@ CpuRNNT<ProbT>::cost_and_grad_kernel(const ProbT* const log_probs, ProbT* grad,
                               const int* const labels,
                               int mb, int T, int U, size_t bytes_used) {
     
-    CpuRNNT_metadata rnntm(mb, T, U, workspace_, bytes_used);
+    CpuRNNT_metadata rnntm(T, U, workspace_, bytes_used);
 
     ProbT llForward = compute_alphas(log_probs, T, U, rnntm.alphas, labels);
     ProbT llBackward = compute_betas_and_grad(grad, log_probs, T, U,
@@ -174,7 +178,7 @@ ProbT
 CpuRNNT<ProbT>::compute_alphas(const ProbT* const log_probs, int T, int U, 
                         ProbT* alphas, const int* const labels) {
 
-    CpuRNNT_index idx(U, maxU_, alphabet_size_);
+    CpuRNNT_index idx(U, maxU_, minibatch_, alphabet_size_, batch_first);
 
     alphas[0] = 0;
     for (int t = 1; t < T; ++t) {
@@ -204,7 +208,7 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
                                 int T, int U, ProbT* alphas, ProbT* betas,
                                 const int* const labels, ProbT logll) {
 
-    CpuRNNT_index idx(U, maxU_, alphabet_size_);
+    CpuRNNT_index idx(U, maxU_, minibatch_, alphabet_size_, batch_first);
 
     betas[idx(T-1, U-1)] = log_probs[idx(T-1, U-1, blank_)];
     for (int t = T-2; t >= 0; --t) {
@@ -225,6 +229,7 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
 
     ProbT loglike = betas[0];
 
+    std::fill(grad, grad + maxT_ * maxU_ * alphabet_size_, 0);
     // Gradients w.r.t. log probabilities
     grad[idx(T-1, U-1, blank_)] = alphas[idx(T-1, U-1)];
     for (int t = 0; t < T-1; ++t) {
@@ -281,7 +286,8 @@ CpuRNNT<ProbT>::cost_and_grad(ProbT* const log_probs,
     for (int mb = 0; mb < minibatch_; ++mb) {
         const int T = input_lengths[mb];     // Length of utterance (time)
         const int U = label_lengths[mb] + 1; // Number of labels in transcription
-        const int batch_size = maxT_ * maxU_ * alphabet_size_;
+        int batch_size = alphabet_size_;
+        if (batch_first) batch_size = maxT_ * maxU_ * alphabet_size_;
 
         costs[mb] = cost_and_grad_kernel(log_probs + mb * batch_size,
                              grads + mb * batch_size,
@@ -315,9 +321,10 @@ CpuRNNT<ProbT>::score_forward(ProbT* const log_probs,
     for (int mb = 0; mb < minibatch_; ++mb) {
         const int T = input_lengths[mb];     // Length of utterance (time)
         const int U = label_lengths[mb] + 1; // Number of labels in transcription
-        const int batch_size = maxT_ * maxU_ * alphabet_size_;
+        int batch_size = alphabet_size_;
+        if (batch_first) batch_size = maxT_ * maxU_ * alphabet_size_;
 
-        CpuRNNT_metadata rnntm(mb, T, U, workspace_, mb * per_minibatch_bytes);
+        CpuRNNT_metadata rnntm(T, U, workspace_, mb * per_minibatch_bytes);
 
         costs[mb] = -compute_alphas(log_probs + mb * batch_size, T, U, 
                             rnntm.alphas, 

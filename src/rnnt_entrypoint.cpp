@@ -43,7 +43,8 @@ rnntStatus_t compute_rnnt_loss(float* const activations, //BTUV
                              int maxU,
                              float *costs,
                              void *workspace,
-                             int blank_label) {
+                             int blank_label,
+                             bool batch_first) {
 
     if (activations == nullptr ||
         flat_labels == nullptr ||
@@ -57,7 +58,7 @@ rnntStatus_t compute_rnnt_loss(float* const activations, //BTUV
         maxU <= 0)
         return RNNT_STATUS_INVALID_VALUE;
 
-    CpuRNNT<float> rnnt(minibatch, maxT, maxU, alphabet_size, workspace, blank_label);
+    CpuRNNT<float> rnnt(minibatch, maxT, maxU, alphabet_size, workspace, blank_label, batch_first);
 
     if (gradients != NULL)
         return rnnt.cost_and_grad(activations, gradients,

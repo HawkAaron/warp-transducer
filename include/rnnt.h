@@ -104,7 +104,8 @@ rnntStatus_t compute_rnnt_loss(float* const activations,
                              int maxU,
                              float *costs,
                              void *workspace,
-                             int blank_label);
+                             int blank_label,
+                             bool batch_first);
 
 
 /** For a given set of max sequence length and minibatch size return the required 

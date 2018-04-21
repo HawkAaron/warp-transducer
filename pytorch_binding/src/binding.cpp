@@ -12,7 +12,8 @@ extern "C" int cpu_rnnt(THFloatTensor *log_probs,
                         THIntTensor *label_lengths,
                         THFloatTensor *costs,
                         THFloatTensor *grads,
-                        int blank_label) {
+                        int blank_label,
+                        int batch_first) {
 
     float *probs_ptr = log_probs->storage->data + log_probs->storageOffset;
     float *grads_ptr;
@@ -27,22 +28,27 @@ extern "C" int cpu_rnnt(THFloatTensor *log_probs,
     int *label_lengths_ptr = label_lengths->storage->data + label_lengths->storageOffset;
     float *costs_ptr = costs->storage->data + costs->storageOffset;
 
-    int minibatch_size = log_probs->size[0];
-    int maxT = log_probs->size[1];
-    int maxU = log_probs->size[2];
+    int maxT = log_probs->size[0];
+    int maxU = log_probs->size[1];
+    int minibatch_size = log_probs->size[2];
     int alphabet_size = log_probs->size[3];
+
+	if (batch_first) {
+		minibatch_size = log_probs->size[0];
+		maxT = log_probs->size[1];
+		maxU = log_probs->size[2];
+	}
 
     size_t cpu_size_bytes;
     get_workspace_size(maxT, maxU, minibatch_size,
                        false, &cpu_size_bytes);
 
     float* cpu_workspace = (float*) new unsigned char[cpu_size_bytes];
-
     compute_rnnt_loss(probs_ptr, grads_ptr,
                      labels_ptr, label_lengths_ptr,
                      input_lengths_ptr, alphabet_size,
                      minibatch_size, maxT, maxU, costs_ptr,
-                     cpu_workspace, blank_label);
+                     cpu_workspace, blank_label, batch_first);
 
     delete cpu_workspace;
     return 1;

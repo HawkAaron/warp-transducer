@@ -5,4 +5,5 @@ int cpu_rnnt(THFloatTensor *log_probs,
                         THFloatTensor *costs,
                         THFloatTensor *grads,
                         int blank_label,
+                        int num_threads,
                         int batch_first);

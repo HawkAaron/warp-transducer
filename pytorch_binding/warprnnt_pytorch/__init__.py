@@ -25,6 +25,7 @@ class _RNNT(Function):
                   costs,
                   grads,
                   blank_label,
+                  0,
                   batch_first)
 
         costs = torch.FloatTensor([costs.sum()])

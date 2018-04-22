@@ -53,6 +53,15 @@ struct rnntOptions {
 
     /// the label value/index that the RNNT calculation should use as the blank label
     int blank_label;
+
+    /// the maximum length of time steps
+    int maxT;
+
+    /// the maximum length of label sequence
+    int maxU;
+
+    /// memory structure
+    bool batch_first;
 };
 
 /** Compute the RNN Transducer loss between a sequence
@@ -100,12 +109,9 @@ rnntStatus_t compute_rnnt_loss(float* const activations,
                              const int* const input_lengths,
                              int alphabet_size,
                              int minibatch,
-                             int maxT,
-                             int maxU,
                              float *costs,
                              void *workspace,
-                             int blank_label,
-                             bool batch_first);
+                             rnntOptions options);
 
 
 /** For a given set of max sequence length and minibatch size return the required 

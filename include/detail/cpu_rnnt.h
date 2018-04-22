@@ -27,10 +27,17 @@ template<typename ProbT>
 class CpuRNNT {
 public:
     // Noncopyable
-    CpuRNNT(int minibatch, int maxT, int maxU, int alphabet_size, void* workspace, int blank, bool batch_first) :
+    CpuRNNT(int minibatch, int maxT, int maxU, int alphabet_size, void* workspace, int blank, int num_threads, bool batch_first) :
         minibatch_(minibatch), maxT_(maxT), maxU_(maxU), alphabet_size_(alphabet_size), 
-        workspace_(workspace), blank_(blank), batch_first(batch_first) {
-
+        workspace_(workspace), blank_(blank), num_threads_(num_threads), batch_first(batch_first) {
+#if defined(RNNT_DISABLE_OMP) || defined(APPLE)
+#else
+        if (num_threads > 0) {
+            omp_set_num_threads(num_threads);
+        } else {
+            num_threads_ = omp_get_max_threads();
+        }
+#endif
     };
 
     CpuRNNT(const CpuRNNT&) = delete;
@@ -76,7 +83,9 @@ private:
     int alphabet_size_; // Number of characters plus blank
     void* workspace_;
     int blank_;
+    int num_threads_;
     bool batch_first;
+    // TODO omp_get_max_threads
 
     // Only for seperate input
     void log_softmax(const ProbT* const activations, ProbT* log_probs,
@@ -181,6 +190,7 @@ CpuRNNT<ProbT>::compute_alphas(const ProbT* const log_probs, int T, int U,
     CpuRNNT_index idx(U, maxU_, minibatch_, alphabet_size_, batch_first);
 
     alphas[0] = 0;
+    // TODO using one loop to optimize memory continuous fetching
     for (int t = 1; t < T; ++t) {
         alphas[idx(t, 0)] = alphas[idx(t-1, 0)] + log_probs[idx(t-1, 0, blank_)];
     }
@@ -211,6 +221,7 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
     CpuRNNT_index idx(U, maxU_, minibatch_, alphabet_size_, batch_first);
 
     betas[idx(T-1, U-1)] = log_probs[idx(T-1, U-1, blank_)];
+    // TODO using one for loop to optimize memory continuous fetching
     for (int t = T-2; t >= 0; --t) {
         betas[idx(t, U-1)] = betas[idx(t+1, U-1)] + log_probs[idx(t, U-1, blank_)];
     }
@@ -226,7 +237,7 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
             betas[idx(t, u)] = log_sum_exp<ProbT>(emit, no_emit);
         }
     }
-
+    // 
     ProbT loglike = betas[0];
 
     // if (batch_first) std::fill(grad, grad + maxT_ * maxU_ * alphabet_size_, 0);
@@ -243,7 +254,7 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
             grad[idx(t, u, labels[u])] = alphas[idx(t, u)] + betas[idx(t, u+1)];
         }
     }
-
+    // grad maybe too far from log_probs
     for (int t = 0; t < T; ++t) {
         for (int u = 0; u < U; ++u) {
             for (int v = 0; v < alphabet_size_; ++v) {

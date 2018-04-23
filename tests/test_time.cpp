@@ -16,8 +16,10 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
     std::mt19937 gen(2);
 
     auto start = std::chrono::high_resolution_clock::now();
-    int len = B * T * (L + 1) * A;
-    float * acts = genActs(len);
+    int trans_len = B * T * A;
+    int pred_len = B * (L + 1) * A;
+    float * trans_acts = genActs(trans_len);
+    float * pred_acts = genActs(pred_len);
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
     std::cout << "genActs elapsed time: " << elapsed.count() * 1000 << " ms\n";
@@ -39,18 +41,18 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
 
     std::vector<float> costs(B);
 
-    float * grads = new float[len];
+    float * trans_grads = new float[trans_len];
+    float * pred_grads = new float[pred_len];
 
     rnntOptions options{};
     options.maxT = T;
     options.maxU = L + 1;
     options.blank_label = 0;
-    options.batch_first = true;
     options.loc = RNNT_CPU;
     options.num_threads = num_threads;
 
     size_t cpu_alloc_bytes;
-    throw_on_error(get_workspace_size(T, L+1, B,
+    throw_on_error(get_workspace_size(T, L+1, B, A,
                                      false,
                                      &cpu_alloc_bytes),
                     "Error: get_workspace_size in run_test");
@@ -58,7 +60,7 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
     void* rnnt_cpu_workspace = malloc(cpu_alloc_bytes);
 
     start = std::chrono::high_resolution_clock::now();
-    throw_on_error(compute_rnnt_loss(acts, grads,
+    throw_on_error(compute_rnnt_loss(trans_acts, pred_acts, trans_grads, pred_grads,
                                     flat_labels.data(), label_lengths.data(),
                                     sizes.data(),
                                     A, B,

@@ -15,17 +15,14 @@ bool small_test() {
     const int T = 2;
     const int U = 3;
 
-    std::vector<float> activations = {0.1, 0.6, 0.1, 0.1, 0.1,
-                                      0.1, 0.1, 0.6, 0.1, 0.1,
-                                      0.1, 0.1, 0.2, 0.8, 0.1,
-                                      0.1, 0.6, 0.1, 0.1, 0.1,
-                                      0.1, 0.1, 0.2, 0.1, 0.1,
-                                      0.7, 0.1, 0.2, 0.1, 0.1};
+    std::vector<float> trans_acts = {0.41949576139450073 ,0.31693804264068604 ,0.7670461535453796 ,0.8889783024787903 ,0.5395874977111816 ,
+                                    0.24531936645507812 ,0.8488685488700867 ,0.5839998722076416 ,0.04401040077209473 ,0.3734890818595886 };
 
-    // Calculate the score analytically
-    std::vector<float> log_probs(activations.size());
-    softmax(activations.data(), alphabet_size, T, log_probs.data(), true);
-    float expected_score = 4.495666;
+    std::vector<float> pred_acts = {0.6518162488937378 ,0.9520350098609924 ,0.40872979164123535 ,0.42321133613586426 ,0.4537124037742615 ,
+                                    0.49220818281173706 ,0.5218477845191956 ,0.43106764554977417 ,0.6558153033256531 ,0.20882707834243774 ,
+                                    0.3555586338043213 ,0.24547159671783447 ,0.0288771390914917 ,0.42015254497528076 ,0.9517340660095215 };
+
+    float expected_score = 5.3452;
 
     std::vector<int> labels = {1, 2};
     std::vector<int> label_lengths = {2};
@@ -36,23 +33,25 @@ bool small_test() {
     float score;
 
     rnntOptions options{};
+    options.maxT = T;
+    options.maxU = U;
     options.loc = RNNT_CPU;
     options.num_threads = 1;
 
     size_t cpu_alloc_bytes;
-    throw_on_error(get_workspace_size(lengths[0], label_lengths[0],
-                                      lengths.size(), false,
+    throw_on_error(get_workspace_size(T, U, B, A
+                                      false,
                                       &cpu_alloc_bytes),
                    "Error: get_workspace_size in small_test");
 
     void* rnnt_cpu_workspace = malloc(cpu_alloc_bytes);
 
-    throw_on_error(compute_rnnt_loss(log_probs.data(), NULL,
+    throw_on_error(compute_rnnt_loss(trans_acts.data(), pred_acts.data(),
+                                    NULL, NULL,
                                     labels.data(), label_lengths.data(),
                                     lengths.data(),
                                     alphabet_size,
                                     lengths.size(),
-                                    T, U,
                                     &score,
                                     rnnt_cpu_workspace,
                                     options),

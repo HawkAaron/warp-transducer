@@ -75,85 +75,43 @@ int offset(int t, int n, int a) {
 bool options_test() {
     const int alphabet_size = 6;
     const int T = 5;
+    const int L = 3;
     const int minibatch = 2;
 
-    std::vector<float> activations =
-            {0.06535690384862791, 0.7875301411923206, 0.08159176605666074,
-              0.5297155426466327, 0.7506749639230854, 0.7541348379087998,
-              0.6097641124736383, 0.8681404965673826, 0.6225318186056529,
+    std::vector<float> trans_acts = {0.20836472511291504 ,0.6848891377449036 ,0.8508703112602234 ,0.5761988759040833 ,0.19992691278457642 ,0.8066366910934448 ,
+                                0.7215913534164429 ,0.2725244164466858 ,0.20181220769882202 ,0.7149978280067444 ,0.7996553182601929 ,0.5940970182418823 ,
+                                0.9547191262245178 ,0.3950379490852356 ,0.9179182648658752 ,0.6635433435440063 ,0.5223862528800964 ,0.3065106272697449 ,
+                                0.9895828366279602 ,0.7198997735977173 ,0.3201969265937805 ,0.4918731451034546 ,0.827298641204834 ,0.7208738327026367 ,
+                                0.5181616544723511 ,0.8324336409568787 ,0.29219377040863037 ,0.3595501780509949 ,0.6904011964797974 ,0.8513350486755371 ,
+                                0.5865226984024048 ,0.8465507626533508 ,0.7300622463226318 ,0.24205732345581055 ,0.24660539627075195 ,0.931033730506897 ,
+                                0.8725375533103943 ,0.06845909357070923 ,0.7426746487617493 ,0.7473852038383484 ,0.6735857129096985 ,0.8149459958076477 ,
+                                0.6253803968429565 ,0.5640403628349304 ,0.5929765701293945 ,0.6260771751403809 ,0.23223882913589478 ,0.04109394550323486 };
+    std::vector<float> pred_acts = {0.06116640567779541 ,0.14563453197479248 ,0.5638840198516846 ,0.6632290482521057 ,0.19838422536849976 ,0.1820780634880066 ,
+                                0.6904842257499695 ,0.30375921726226807 ,0.6189450621604919 ,0.0328218936920166 ,0.7522785663604736 ,0.826593279838562 ,
+                                0.9041121006011963 ,0.31825321912765503 ,0.10209769010543823 ,0.4442335367202759 ,0.7338142991065979 ,0.22434186935424805 ,
+                                0.7973766326904297 ,0.8608612418174744 ,0.4400267004966736 ,0.8985074758529663 ,0.37170130014419556 ,0.9338418245315552 ,
+                                0.7007454037666321 ,0.6552602648735046 ,0.5205059051513672 ,0.30149775743484497 ,0.605181872844696 ,0.1901898980140686 ,
+                                0.9128827452659607 ,0.6805384159088135 ,0.019013822078704834 ,0.8405444622039795 ,0.5298664569854736 ,0.27262967824935913 };
 
-             0.6685222872103057, 0.8580392805336061, 0.16453892311765583,
-              0.989779515236694, 0.944298460961015, 0.6031678586829663,
-              0.9467833543605416, 0.666202507295747, 0.28688179752461884,
-
-             0.09418426230195986, 0.3666735970751962, 0.736168049462793,
-              0.1666804425271342, 0.7141542198635192, 0.3993997272216727,
-              0.5359823524146038, 0.29182076440286386, 0.6126422611507932,
-
-             0.3242405528768486, 0.8007644367291621, 0.5241057606558068,
-              0.779194617063042, 0.18331417220174862, 0.113745182072432,
-              0.24022162381327106, 0.3394695622533106, 0.1341595066017014,
-
-            0.5055615569388828, 0.051597282072282646, 0.6402903936686337,
-              0.43073311517251, 0.8294731834714112, 0.1774668847323424,
-              0.3207001991262245, 0.04288308912457006, 0.30280282975568984,
-
-             0.6751777088333762, 0.569537369330242, 0.5584738347504452,
-              0.08313242153985256, 0.06016544344162322, 0.10795752845152584,
-              0.7486153608562472, 0.943918041459349, 0.4863558118797222,
-
-             0.4181986264486809, 0.6524078485043804, 0.024242983423721887,
-              0.13458171554507403, 0.3663418070512402, 0.2958297395361563,
-              0.9236695822497084, 0.6899291482654177, 0.7418981733448822,
-
-             0.25000547599982104, 0.6034295486281007, 0.9872887878887768,
-              0.5926057265215715, 0.8846724004467684, 0.5434495396894328,
-              0.6607698886038497, 0.3771277082495921, 0.3580209022231813};
-
-    std::vector<float> expected_grads = // from tensorflow
-          {-0.4322264564338117, -0.5677735435661883, 0.0,
-              -0.36565009313836844, 0.0, -0.20212345042782007,
-              -0.20212345042782007, 0.0, 0.0,
-
-             -0.16521672442463506, -0.2670097320091765, 0.0,
-              -0.3943653886107811, 0.0, -0.2382944365367636,
-              -0.44041788696458367, 0.0, 0.0,
-
-             -0.052129794015740985, -0.11308693040889405, 0.0,
-              -0.18313786985332664, 0.0, -0.3243144491663483,
-              -0.7647323361309323, 0.0, 0.0,
-
-             0.0, -0.052129794015740985, 0.0,
-              0.0, 0.0, -0.23526766386906767,
-              -1.0, 0.0, 0.0,
-
-            -0.7161424128232795, -0.2838575871767207, 0.0,
-              -0.18382932237365335, -0.10002826480306751, 0.0,
-              -0.10002826480306751, 0.0, 0.0,
-
-             -0.41121794618117213, -0.3049244666421072, 0.0,
-              -0.3295759402552584, -0.15917784876050195, 0.0,
-              -0.2592061135635692, 0.0, 0.0,
-
-             -0.11607642141651396, -0.29514152476465827, 0.0,
-              -0.2865333615432337, -0.3381841034766833, 0.0,
-              -0.5973902170402529, 0.0, 0.0,
-
-             0.0, -0.11607642141651396, 0.0,
-              0.0, -0.4026097829597475, 0.0,
-              -1.0, 0.0, 0.0};
-
+    std::vector<float> expected_trans_grads = {0.18298208713531494 ,-0.1863221824169159 ,0.24029867351055145 ,0.31508156657218933 ,0.17985235154628754 ,-0.7318925261497498 ,
+                                        0.26263949275016785 ,-0.10713391751050949 ,0.13813626766204834 ,0.16261409223079681 ,0.2808478772640228 ,-0.7371038794517517 ,
+                                        0.3619690537452698 ,-0.06026348099112511 ,0.08730498701334 ,0.25879740715026855 ,0.22078825533390045 ,-0.8685961961746216 ,
+                                        0.3360159993171692 ,-0.1639198213815689 ,0.1387038677930832 ,0.1545054018497467 ,0.2540736496448517 ,-0.7193790674209595 ,
+                                        0.27959010004997253 ,0.03639250993728638 ,-0.061875589191913605 ,0.19594523310661316 ,0.30305129289627075 ,-0.753103494644165 ,
+                                        0.29537156224250793 ,-0.274471253156662 ,0.2312944084405899 ,0.18443721532821655 ,0.16433767974376678 ,-0.6009695529937744 ,
+                                        0.385039746761322 ,0.06576273590326309 ,-0.18127907812595367 ,0.2354261875152588 ,0.28227531909942627 ,-0.7872248888015747 ,
+                                        0.4264937937259674 ,-0.4397970736026764 ,0.22451627254486084 ,0.4020277261734009 ,0.20442542433738708 ,-0.8176661133766174 };
+    std::vector<float> expected_pred_grads = {0.2336210012435913 ,-0.7242842316627502 ,0.49153390526771545 ,0.4382175803184509 ,0.2350836545228958 ,-0.6741719245910645 ,
+                                        0.5328136086463928 ,-0.7057985663414001 ,0.3393358588218689 ,0.2234761267900467 ,0.5142948627471924 ,-0.9041219353675842 ,
+                                        0.5180250406265259 ,0.26190635561943054 ,-0.7572638988494873 ,0.29955601692199707 ,0.3859791159629822 ,-0.7082027196884155 ,
+                                        0.4035489857196808 ,-0.5864231586456299 ,0.24028921127319336 ,0.3576064705848694 ,0.20584842562675476 ,-0.6208699345588684 ,
+                                        0.4579349160194397 ,0.31794747710227966 ,0.35017895698547363 ,0.26747676730155945 ,0.3649044632911682 ,-1.7584426403045654 ,
+                                        0.38415825366973877 ,0.30689966678619385 ,0.15302574634552002 ,0.3225018382072449 ,0.18354131281375885 ,-1.35012686252594 };
 
     // Calculate the expected scores analytically
     std::vector<double> expected_scores(2);
-    auto& a = activations;
-    expected_scores[0] = 4.2806528590890736;
-    expected_scores[1] = 3.9384369822503591;
-
-    // now take the log to account for the softmax
-    for (auto& a : activations) {
-        a = std::log(a);
-    }
+    expected_scores[0] = 9.8610;
+    expected_scores[1] = 8.7003;
 
     std::vector<int> labels = {1, 2, 1, 1};
 
@@ -161,24 +119,28 @@ bool options_test() {
 
     std::vector<int> lengths = {4, 4};
 
-    std::vector<float> grads(alphabet_size * T * minibatch);
+    std::vector<float> trans_grads(alphabet_size * T * minibatch);
+    std::vector<float> pred_grads(alphabet_size * L * minibatch);
 
     std::vector<float> scores(2);
 
-    ctcOptions options{};
-    options.loc = CTC_CPU;
+    rnntOptions options{};
+    options.maxT = T;
+    options.maxU = L;
+    options.loc = RNNT_CPU;
     options.num_threads = 1;
     options.blank_label = 5;
 
     size_t cpu_alloc_bytes;
-    throw_on_error(get_workspace_size(label_lengths.data(), lengths.data(),
-                                      alphabet_size, lengths.size(), options,
+    throw_on_error(get_workspace_size(T, L, minibatch,
+                                      alphabet_size, false,
                                       &cpu_alloc_bytes),
                    "Error: get_workspace_size in options_test");
 
-    void* ctc_cpu_workspace = malloc(cpu_alloc_bytes);
+    void* rnnt_cpu_workspace = malloc(cpu_alloc_bytes);
 
-    throw_on_error(compute_ctc_loss(activations.data(), grads.data(),
+    throw_on_error(compute_rnnt_loss(trans_acts.data(), pred_acts.data(),
+                                    trans_grads.data(), pred_grads.data(),
                                     labels.data(), label_lengths.data(),
                                     lengths.data(),
                                     alphabet_size,
@@ -188,19 +150,34 @@ bool options_test() {
                                     options),
                    "Error: compute_ctc_loss in options_test");
 
-    free(ctc_cpu_workspace);
+    free(rnnt_cpu_workspace);
 
     const double eps = 1e-4;
 
     bool result = true;
-    for (int i = 0; i < grads.size(); i++) {
-        const double lb = expected_grads[i] - eps;
-        const double ub = expected_grads[i] + eps;
-        if (!(grads[i] > lb && grads[i] < ub)) {
+    // transcription activations gradient check
+    for (int i = 0; i < trans_grads.size(); i++) {
+        const double lb = expected_trans_grads[i] - eps;
+        const double ub = expected_trans_grads[i] + eps;
+        if (!(trans_grads[i] > lb && trans_grads[i] < ub)) {
             std::cerr << "grad mismatch in options_test"
-                      << " expected grad: " << expected_grads[i]
-                      << " calculated score: " << grads[i]
-                      << " !(" << lb << " < " << grads[i]
+                      << " expected grad: " << expected_trans_grads[i]
+                      << " calculated score: " << trans_grads[i]
+                      << " !(" << lb << " < " << trans_grads[i]
+                      << " < " << ub << ")" << std::endl;
+            result = false;
+        }
+    }
+
+    // prediction activations gradient check
+    for (int i = 0; i < pred_grads.size(); i++) {
+        const double lb = expected_pred_grads[i] - eps;
+        const double ub = expected_pred_grads[i] + eps;
+        if (!(pred_grads[i] > lb && pred_grads[i] < ub)) {
+            std::cerr << "grad mismatch in options_test"
+                      << " expected grad: " << expected_pred_grads[i]
+                      << " calculated score: " << pred_grads[i]
+                      << " !(" << lb << " < " << pred_grads[i]
                       << " < " << ub << ")" << std::endl;
             result = false;
         }
@@ -231,55 +208,102 @@ bool inf_test() {
     labels[0] = 2;
     std::vector<int> label_lengths = {L};
 
-    std::vector<float> acts = genActs(alphabet_size * T * minibatch);
-
-    for (int i = 0; i < T; ++i)
-        acts[alphabet_size * i + 2] = -1e30;
+    std::vector<float> trans_acts = genActs(alphabet_size * T * minibatch);
+    std::vector<float> pred_acts = genActs(alphabet_size * L * minibatch);
 
     std::vector<int> sizes;
     sizes.push_back(T);
 
-    std::vector<float> grads(alphabet_size * T);
+    std::vector<float> trans_grads(alphabet_size * T * minibatch);
+    std::vector<float> pred_grads(alphabet_size * L * minibatch);
 
     float cost;
 
     ctcOptions options{};
-    options.loc = CTC_CPU;
+    options.maxT = T;
+    options.maxU = L;
+    options.loc = RNNT_CPU;
     options.num_threads = 1;
 
     size_t cpu_alloc_bytes;
-    throw_on_error(get_workspace_size(label_lengths.data(), sizes.data(),
-                                      alphabet_size, sizes.size(), options,
+    throw_on_error(get_workspace_size(T, L, minibatch,
+                                      alphabet_size, false,
                                       &cpu_alloc_bytes),
                    "Error: get_workspace_size in inf_test");
 
-    void* ctc_cpu_workspace = malloc(cpu_alloc_bytes);
+    void* rnnt_cpu_workspace = malloc(cpu_alloc_bytes);
 
-    throw_on_error(compute_ctc_loss(acts.data(), grads.data(),
+    throw_on_error(compute_rnnt_loss(trans_acts.data(), pred_acts.data(),
+                                    trans_grads.data(), pred_grads.data(),
                                     labels.data(), label_lengths.data(),
                                     sizes.data(),
                                     alphabet_size,
                                     sizes.size(),
                                     &cost,
-                                    ctc_cpu_workspace,
+                                    rnnt_cpu_workspace,
                                     options),
-                   "Error: compute_ctc_loss in inf_test");
+                   "Error: compute_rnnt_loss in inf_test");
 
-    free(ctc_cpu_workspace);
+    free(rnnt_cpu_workspace);
 
     bool status = true;
     status &= std::isinf(cost);
 
-    for (int i = 0; i < alphabet_size * T; ++i)
-        status &= !std::isnan(grads[i]);
+    for (int i = 0; i < alphabet_size * T * minibatch; ++i) 
+        status &= !std::isnal(trans_grad[i]);
+    for (int i = 0; i < alphabet_size * L; ++i)
+        status &= !std::isnan(pred_grads[i]);
 
     return status;
 }
 
-float grad_check(int T, int alphabet_size,
-                  std::vector<float>& acts,
+float numeric_grad(std::vector<float>& acts, std::vector<float>& trans_acts, std::vector<float>& pred_acts,
+                std::vector<float>& flat_labels, std::vector<float>& label_lengths,
+                std::vector<float> sizes, int alphabet_size, int minibatch, 
+                void* rnnt_cpu_workspace, rnntOptions& options, std::vector<float>& num_grad) {
+
+    for (int i = 0; i < num_grad.size(); ++i) {
+
+        std::vector<float> costsP1(minibatch);
+        std::vector<float> costsP2(minibatch);
+
+        acts[i] += epsilon;
+        throw_on_error(compute_rnnt_loss(trans_acts.data(), pred_acts.data(),
+                                        NULL, NULL,
+                                        flat_labels.data(), label_lengths.data(),
+                                        sizes.data(),
+                                        alphabet_size,
+                                        minibatch,
+                                        costsP1.data(),
+                                        rnnt_cpu_workspace,
+                                        options),
+                       "Error: compute_rnnt_loss (1) in grad_check");
+
+        acts[i] -= 2 * epsilon;
+        throw_on_error(compute_rnnt_loss(trans_acts.data(), pred_acts.data(),
+                                        NULL, NULL,
+                                        flat_labels.data(), label_lengths.data(),
+                                        sizes.data(),
+                                        alphabet_size,
+                                        minibatch,
+                                        costsP2.data(),
+                                        rnnt_cpu_workspace,
+                                        options),
+                       "Error: compute_rnnt_loss (2) in grad_check");
+
+        float costP1 = std::accumulate(costsP1.begin(), costsP1.end(), 0.);
+        float costP2 = std::accumulate(costsP2.begin(), costsP2.end(), 0.);
+
+        acts[i] += epsilon;
+        num_grad[i] = (costP1 - costP2) / (2 * epsilon);
+    }
+}
+
+float grad_check(int T, int L, int alphabet_size,
+                  std::vector<float>& trans_acts,
+                  std::vector<float>& pred_acts,
                   const std::vector<std::vector<int>>& labels,
-                  const std::vector<int>& sizes) {
+                  const std::vector<int>& sizes, float tol) {
 
     float epsilon = 1e-2;
 
@@ -294,74 +318,51 @@ float grad_check(int T, int alphabet_size,
 
     std::vector<float> costs(minibatch);
 
-    std::vector<float> grads(acts.size());
+    std::vector<float> trans_grads(trans_acts.size());
+    std::vector<float> pred_grads(pred_acts.size());
 
     ctcOptions options{};
-    options.loc = CTC_CPU;
+    options.maxT = T;
+    options.maxU = L;
+    options.loc = RNNT_CPU;
     options.num_threads = 1;
 
     size_t cpu_alloc_bytes;
-    throw_on_error(get_workspace_size(label_lengths.data(), sizes.data(),
-                                      alphabet_size, sizes.size(), options,
+    throw_on_error(get_workspace_size(T, L, sizes.size(),
+                                      alphabet_size, false,
                                       &cpu_alloc_bytes),
                    "Error: get_workspace_size in grad_check");
 
-    void* ctc_cpu_workspace = malloc(cpu_alloc_bytes);
+    void* rnnt_cpu_workspace = malloc(cpu_alloc_bytes);
 
-    throw_on_error(compute_ctc_loss(acts.data(), grads.data(),
+    throw_on_error(compute_rnnt_loss(trans_acts.data(), pred_acts.data(),
+                                    trans_grads.data(), pred_grads.data(),
                                     flat_labels.data(), label_lengths.data(),
                                     sizes.data(),
                                     alphabet_size,
                                     minibatch,
                                     costs.data(),
-                                    ctc_cpu_workspace,
+                                    rnnt_cpu_workspace,
                                     options),
-                   "Error: compute_ctc_loss (0) in grad_check");
+                   "Error: compute_rnnt_loss (0) in grad_check");
 
     float cost = std::accumulate(costs.begin(), costs.end(), 0.);
 
-    std::vector<float> num_grad(grads.size());
+    std::vector<float> num_trans_grad(trans_grads.size());
+    std::vector<float> num_pred_grad(pred_grads.size());
 
     //perform 2nd order central differencing
-    for (int i = 0; i < T * alphabet_size * minibatch; ++i) {
+    numeric_grad(trans_acts, trans_acts, pred_acts, flat_labels, label_lengths, sizes
+            alphabet_size, minibatch, rnnt_cpu_workspace, options, num_trans_grad);
+    numeric_grad(pred_acts, trans_acts, pred_acts, flat_labels, label_lenths, sizes,
+            alphabet_size, minibatch, rnnt_cpu_workspace, options, num_pred_grad);
 
-        std::vector<float> costsP1(minibatch);
-        std::vector<float> costsP2(minibatch);
+    free(rnnt_cpu_workspace);
 
-        acts[i] += epsilon;
-        throw_on_error(compute_ctc_loss(acts.data(), NULL,
-                                        flat_labels.data(), label_lengths.data(),
-                                        sizes.data(),
-                                        alphabet_size,
-                                        minibatch,
-                                        costsP1.data(),
-                                        ctc_cpu_workspace,
-                                        options),
-                       "Error: compute_ctc_loss (1) in grad_check");
+    float diff_trans = rel_diff(trans_grads, num_trans_grad);
+    float diff_pred = rel_diff(pred_grads, num_pred_grad);
 
-        acts[i] -= 2 * epsilon;
-        throw_on_error(compute_ctc_loss(acts.data(), NULL,
-                                        flat_labels.data(), label_lengths.data(),
-                                        sizes.data(),
-                                        alphabet_size,
-                                        minibatch,
-                                        costsP2.data(),
-                                        ctc_cpu_workspace,
-                                        options),
-                       "Error: compute_ctc_loss (2) in grad_check");
-
-        float costP1 = std::accumulate(costsP1.begin(), costsP1.end(), 0.);
-        float costP2 = std::accumulate(costsP2.begin(), costsP2.end(), 0.);
-
-        acts[i] += epsilon;
-        num_grad[i] = (costP1 - costP2) / (2 * epsilon);
-    }
-
-    free(ctc_cpu_workspace);
-
-    float diff = rel_diff(grads, num_grad);
-
-    return diff;
+    return (diff_trans < tol) && (diff_pred < tol);
 }
 
 bool run_tests() {
@@ -378,7 +379,8 @@ bool run_tests() {
         float tol;
         std::tie(alphabet_size, T, L, minibatch, tol) = problem;
 
-        std::vector<float> acts = genActs(alphabet_size * T * minibatch);
+        std::vector<float> trans_acts = genActs(alphabet_size * T * minibatch);
+        std::vector<float> pred_acts = genActs(alphabet_size * L * minibatch);
 
         std::vector<std::vector<int>> labels;
         std::vector<int> sizes;
@@ -388,9 +390,7 @@ bool run_tests() {
             sizes.push_back(T);
         }
 
-        float diff = grad_check(T, alphabet_size, acts, labels, sizes);
-
-        status &= (diff < tol);
+        status &= grad_check(T, alphabet_size, acts, labels, sizes, tol);
     }
 
     return status;

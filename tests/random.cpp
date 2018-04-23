@@ -1,10 +1,9 @@
 #include <vector>
 #include <random>
 
-
-std::vector<float>
+float *
 genActs(int size) {
-    std::vector<float> arr(size);
+    float * arr = new float[size];
     std::mt19937 gen(0);
     std::uniform_real_distribution<> dis(0, 1);
     for(int i = 0; i < size; ++i)

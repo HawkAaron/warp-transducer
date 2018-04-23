@@ -15,7 +15,12 @@
 bool run_test(int B, int T, int L, int A, int num_threads) {
     std::mt19937 gen(2);
 
-    std::vector<float> acts = genActs(B * T * (L + 1) * A);
+    auto start = std::chrono::high_resolution_clock::now();
+    int len = B * T * (L + 1) * A;
+    float * acts = genActs(len);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    std::cout << "genActs elapsed time: " << elapsed.count() * 1000 << " ms\n";
 
     std::vector<std::vector<int>> labels;
     std::vector<int> sizes;
@@ -34,7 +39,7 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
 
     std::vector<float> costs(B);
 
-    std::vector<float> grads(acts.size());
+    float * grads = new float[len];
 
     rnntOptions options{};
     options.maxT = T;
@@ -52,19 +57,19 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
     
     void* rnnt_cpu_workspace = malloc(cpu_alloc_bytes);
 
-    auto start = std::chrono::high_resolution_clock::now();
-    throw_on_error(compute_rnnt_loss(acts.data(), grads.data(),
+    start = std::chrono::high_resolution_clock::now();
+    throw_on_error(compute_rnnt_loss(acts, grads,
                                     flat_labels.data(), label_lengths.data(),
                                     sizes.data(),
                                     A, B,
                                     costs.data(),
                                     rnnt_cpu_workspace,
                                     options),
-                    "Error: compute_ctc_loss (0) in run_test");
-    auto end = std::chrono::high_resolution_clock::now();
+                    "Error: compute_rnnt_loss (0) in run_test");
+    end = std::chrono::high_resolution_clock::now();
 
-    std::chrono::duration<double> elapsed = end - start;
-    std::cout << "compute_ctc_loss elapsed time: " << elapsed.count() * 1000 << " ms\n";
+    elapsed = end - start;
+    std::cout << "compute_rnnt_loss elapsed time: " << elapsed.count() * 1000 << " ms\n";
 
     float cost = std::accumulate(costs.begin(), costs.end(), 0.);
 

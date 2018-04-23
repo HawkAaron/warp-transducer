@@ -32,8 +32,10 @@ const char* rnntGetStatusString(rnntStatus_t status) {
 }
 
 
-rnntStatus_t compute_rnnt_loss(float* const activations, //BTUV
-                             float* gradients,
+rnntStatus_t compute_rnnt_loss(const float* const trans_acts, // TBV
+                             const float* const pred_acts,    // UBV
+                             float* trans_grad,
+                             float* pred_grad,
                              const int* const flat_labels,
                              const int* const label_lengths,
                              const int* const input_lengths,
@@ -43,7 +45,8 @@ rnntStatus_t compute_rnnt_loss(float* const activations, //BTUV
                              void *workspace,
                              rnntOptions options) {
 
-    if (activations == nullptr ||
+    if (trans_acts == nullptr ||
+        pred_acts == nullptr ||
         flat_labels == nullptr ||
         label_lengths == nullptr ||
         input_lengths == nullptr ||
@@ -56,27 +59,32 @@ rnntStatus_t compute_rnnt_loss(float* const activations, //BTUV
         return RNNT_STATUS_INVALID_VALUE;
 
     CpuRNNT<float> rnnt(minibatch, options.maxT, options.maxU, alphabet_size, workspace, 
-                            options.blank_label, options.num_threads, options.batch_first);
+                            options.blank_label, options.num_threads);
 
-    if (gradients != NULL)
-        return rnnt.cost_and_grad(activations, gradients,
+    if (trans_grad != NULL && pred_grad != NULL)
+        return rnnt.cost_and_grad(trans_acts, pred_acts,
+                                    trans_grad, pred_grad,
                                     costs,
                                     flat_labels, label_lengths,
                                     input_lengths);
     else
-        return rnnt.score_forward(activations, costs, flat_labels,
+        return rnnt.score_forward(trans_acts, pred_acts,
+                                    trans_grad, pred_grad,
+                                    costs, flat_labels,
                                     label_lengths, input_lengths);
 }
 
 
 rnntStatus_t get_workspace_size(int maxT, int maxU,
                                int minibatch,
+                               int alphabet_size,
                                bool gpu,
                                size_t* size_bytes)
 {
     if (minibatch <= 0 ||
         maxT <= 0 ||
-        maxU <= 0)
+        maxU <= 0 ||
+        alphabet_size <= 0)
         return RNNT_STATUS_INVALID_VALUE;
 
     *size_bytes = 0;
@@ -84,8 +92,14 @@ rnntStatus_t get_workspace_size(int maxT, int maxU,
     // per minibatch memory
     size_t per_minibatch_bytes = 0;
 
-    // alphas & betas
-    per_minibatch_bytes += sizeof(float) * maxT * maxU * 2;
+    // alphas
+    per_minibatch_bytes += sizeof(float) * maxT * maxU;
+
+    // betas
+    per_minibatch_bytes += sizeof(float) * maxU;
+
+    // log_p
+    per_minibatch_bytes += sizeof(float) * maxT * maxU * alphabet_size;
 
     *size_bytes = per_minibatch_bytes * minibatch;
 

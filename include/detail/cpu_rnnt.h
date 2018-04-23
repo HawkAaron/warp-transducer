@@ -90,14 +90,13 @@ private:
     // Only for seperate input
     void log_softmax(const ProbT* const trans_acts, const ProbT* const pred_acts, ProbT* log_probs);
     
-    ProbT cost_and_grad_kernel(const ProbT* const log_probs, ProbT* grad,
-                               const int* const labels,
-                               int T, int U, size_t bytes_used);
+    ProbT cost_and_grad_kernel(const ProbT* const log_probs, ProbT* trans_grad, ProbT* pred_grad,
+                               const int* const labels, int T, int U, size_t bytes_used);
     
     ProbT compute_alphas(const ProbT* const log_probs, int T, int U,
                          ProbT* alphas, const int* const labels);
     
-    ProbT compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs,
+    ProbT compute_betas_and_grad(ProbT* trans_grad, ProbT* pred_grad, const ProbT* const log_probs,
                                  int T, int U, ProbT* alphas, ProbT* betas,
                                  const int* const labels, ProbT logll);
 };
@@ -222,8 +221,8 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* trans_grad, ProbT* pred_grad,
 
     CpuRNNT_index idx(U, maxU_, minibatch_, alphabet_size_);
 
-    ProbT beta_ = beta_t = beta_u = neg_inf<ProbT>();
-    // 
+    ProbT beta_t, beta_u, beta_ = neg_inf<ProbT>();
+
     std::fill(betas, betas + U, neg_inf<ProbT>()); // right edge gradient
     betas[U-1] = 0; // last point gradient
 
@@ -243,7 +242,7 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* trans_grad, ProbT* pred_grad,
                 beta_ = beta_u + log_probs[idx(t, u, blank_)];
             }
             if (u < U-1) {
-                beta_ = log_sum_exp<ProbT>(beta_, log_probs[idx(t, u, label[u])])
+                beta_ = log_sum_exp<ProbT>(beta_, log_probs[idx(t, u, labels[u])]);
             }
             betas[u] = beta_;
             // gradient
@@ -254,7 +253,7 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* trans_grad, ProbT* pred_grad,
                 if (v == blank_) {
                     grad2 += beta_u;
                 }
-                if (v == label[u]) {
+                if (v == labels[u]) {
                     grad2 += beta_t;
                 }
                 grad1 -= std::exp(grad2);
@@ -290,7 +289,7 @@ CpuRNNT<ProbT>::cost_and_grad(const ProbT* const trans_acts,
     log_softmax(trans_acts, pred_acts, log_probs);
 
     // zero all grads
-    std::fill(trans_grads, trans_grads + minbiatch_ * maxT_ * alphabet_size_, 0);
+    std::fill(trans_grads, trans_grads + minibatch_ * maxT_ * alphabet_size_, 0);
     std::fill(pred_grads, pred_grads + minibatch_ * maxU_ * alphabet_size_, 0);
 
 #pragma omp parallel for 
@@ -312,8 +311,6 @@ template<typename ProbT>
 rnntStatus_t
 CpuRNNT<ProbT>::score_forward(const ProbT* const trans_acts, 
                        const ProbT* pred_acts,
-                       ProbT* trans_grads,
-                       Prob* pred_grads,
                        ProbT* costs,
                        const int* const flat_labels,
                        const int* const label_lengths,

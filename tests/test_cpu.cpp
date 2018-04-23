@@ -39,7 +39,7 @@ bool small_test() {
     options.num_threads = 1;
 
     size_t cpu_alloc_bytes;
-    throw_on_error(get_workspace_size(T, U, B, A
+    throw_on_error(get_workspace_size(T, U, B, alphabet_size,
                                       false,
                                       &cpu_alloc_bytes),
                    "Error: get_workspace_size in small_test");
@@ -55,7 +55,7 @@ bool small_test() {
                                     &score,
                                     rnnt_cpu_workspace,
                                     options),
-                   "Error: compute_ctc_loss in small_test");
+                   "Error: compute_rnnt_loss in small_test");
 
     free(rnnt_cpu_workspace);
     const float eps = 1e-6;
@@ -146,9 +146,9 @@ bool options_test() {
                                     alphabet_size,
                                     lengths.size(),
                                     scores.data(),
-                                    ctc_cpu_workspace,
+                                    rnnt_cpu_workspace,
                                     options),
-                   "Error: compute_ctc_loss in options_test");
+                   "Error: compute_rnnt_loss in options_test");
 
     free(rnnt_cpu_workspace);
 
@@ -208,8 +208,10 @@ bool inf_test() {
     labels[0] = 2;
     std::vector<int> label_lengths = {L};
 
-    std::vector<float> trans_acts = genActs(alphabet_size * T * minibatch);
-    std::vector<float> pred_acts = genActs(alphabet_size * L * minibatch);
+    std::vector<float> trans_acts(alphabet_size * T * minibatch);
+    std::vector<float> pred_acts(alphabet_size * L * minibatch);
+    genActs(trans_acts);
+    genActs(pred_acts);
 
     std::vector<int> sizes;
     sizes.push_back(T);
@@ -219,7 +221,7 @@ bool inf_test() {
 
     float cost;
 
-    ctcOptions options{};
+    rnntOptions options{};
     options.maxT = T;
     options.maxU = L;
     options.loc = RNNT_CPU;
@@ -250,7 +252,7 @@ bool inf_test() {
     status &= std::isinf(cost);
 
     for (int i = 0; i < alphabet_size * T * minibatch; ++i) 
-        status &= !std::isnal(trans_grad[i]);
+        status &= !std::isnan(trans_grads[i]);
     for (int i = 0; i < alphabet_size * L; ++i)
         status &= !std::isnan(pred_grads[i]);
 
@@ -258,9 +260,11 @@ bool inf_test() {
 }
 
 float numeric_grad(std::vector<float>& acts, std::vector<float>& trans_acts, std::vector<float>& pred_acts,
-                std::vector<float>& flat_labels, std::vector<float>& label_lengths,
-                std::vector<float> sizes, int alphabet_size, int minibatch, 
+                std::vector<int>& flat_labels, std::vector<int>& label_lengths,
+                std::vector<int> sizes, int alphabet_size, int minibatch, 
                 void* rnnt_cpu_workspace, rnntOptions& options, std::vector<float>& num_grad) {
+
+    float epsilon = 1e-2;
 
     for (int i = 0; i < num_grad.size(); ++i) {
 
@@ -299,13 +303,11 @@ float numeric_grad(std::vector<float>& acts, std::vector<float>& trans_acts, std
     }
 }
 
-float grad_check(int T, int L, int alphabet_size,
+bool grad_check(int T, int L, int alphabet_size,
                   std::vector<float>& trans_acts,
                   std::vector<float>& pred_acts,
                   const std::vector<std::vector<int>>& labels,
                   const std::vector<int>& sizes, float tol) {
-
-    float epsilon = 1e-2;
 
     const int minibatch = labels.size();
 
@@ -321,7 +323,7 @@ float grad_check(int T, int L, int alphabet_size,
     std::vector<float> trans_grads(trans_acts.size());
     std::vector<float> pred_grads(pred_acts.size());
 
-    ctcOptions options{};
+    rnntOptions options{};
     options.maxT = T;
     options.maxU = L;
     options.loc = RNNT_CPU;
@@ -352,9 +354,9 @@ float grad_check(int T, int L, int alphabet_size,
     std::vector<float> num_pred_grad(pred_grads.size());
 
     //perform 2nd order central differencing
-    numeric_grad(trans_acts, trans_acts, pred_acts, flat_labels, label_lengths, sizes
+    numeric_grad(trans_acts, trans_acts, pred_acts, flat_labels, label_lengths, sizes,
             alphabet_size, minibatch, rnnt_cpu_workspace, options, num_trans_grad);
-    numeric_grad(pred_acts, trans_acts, pred_acts, flat_labels, label_lenths, sizes,
+    numeric_grad(pred_acts, trans_acts, pred_acts, flat_labels, label_lengths, sizes,
             alphabet_size, minibatch, rnnt_cpu_workspace, options, num_pred_grad);
 
     free(rnnt_cpu_workspace);
@@ -379,8 +381,10 @@ bool run_tests() {
         float tol;
         std::tie(alphabet_size, T, L, minibatch, tol) = problem;
 
-        std::vector<float> trans_acts = genActs(alphabet_size * T * minibatch);
-        std::vector<float> pred_acts = genActs(alphabet_size * L * minibatch);
+        std::vector<float> trans_acts(alphabet_size * T * minibatch);
+        std::vector<float> pred_acts(alphabet_size * L * minibatch);
+        genActs(trans_acts);
+        genActs(pred_acts);
 
         std::vector<std::vector<int>> labels;
         std::vector<int> sizes;
@@ -390,15 +394,15 @@ bool run_tests() {
             sizes.push_back(T);
         }
 
-        status &= grad_check(T, alphabet_size, acts, labels, sizes, tol);
+        status &= grad_check(T, L, alphabet_size, trans_acts, pred_acts, labels, sizes, tol);
     }
 
     return status;
 }
 
 int main(void) {
-    if (get_warpctc_version() != 2) {
-        std::cerr << "Invalid WarpCTC version." << std::endl;
+    if (get_warprnnt_version() != 1) {
+        std::cerr << "Invalid Warp-transducer version." << std::endl;
         return 1;
     }
 

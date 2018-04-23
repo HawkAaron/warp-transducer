@@ -22,7 +22,7 @@ extern "C" int cpu_rnnt(THFloatTensor *trans_acts,
     float *trans_grad_ptr = NULL; // this will trigger the score forward code path
     float *pred_grad_ptr = NULL;
 
-    if (trans_grad_ptr->storage && pred_grad_ptr->storage) {
+    if (trans_grad->storage && pred_grad->storage) {
         trans_grad_ptr = THFloatTensor_data(trans_grad);
         pred_grad_ptr = THFloatTensor_data(pred_grad);
     }

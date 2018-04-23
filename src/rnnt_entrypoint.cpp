@@ -69,7 +69,6 @@ rnntStatus_t compute_rnnt_loss(const float* const trans_acts, // TBV
                                     input_lengths);
     else
         return rnnt.score_forward(trans_acts, pred_acts,
-                                    trans_grad, pred_grad,
                                     costs, flat_labels,
                                     label_lengths, input_lengths);
 }

@@ -79,7 +79,7 @@ class RNNTLoss(Module):
         _assert_no_grad(act_lens)
         _assert_no_grad(label_lens)
         if self.batch_first:
-            trans_acts.transpose_(0, 1)
-            pred_acts.transpose_(0, 1)
+            trans_acts = trans_acts.transpose(0, 1)
+            pred_acts = pred_acts.transpose(0, 1)
         return self.rnnt(trans_acts, pred_acts, labels, 
                 act_lens, label_lens, self.size_average, self.blank_label)

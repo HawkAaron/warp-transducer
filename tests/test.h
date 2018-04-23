@@ -16,6 +16,7 @@ inline void throw_on_error(rnntStatus_t status, const char* message) {
 }
 
 float * genActs(int size);
+void genActs(std::vector<float>& arr);
 std::vector<int> genLabels(int alphabet_size, int L);
 
 float rel_diff(const std::vector<float>& grad,

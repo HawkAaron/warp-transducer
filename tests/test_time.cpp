@@ -59,19 +59,30 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
     
     void* rnnt_cpu_workspace = malloc(cpu_alloc_bytes);
 
-    start = std::chrono::high_resolution_clock::now();
-    throw_on_error(compute_rnnt_loss(trans_acts, pred_acts, trans_grads, pred_grads,
-                                    flat_labels.data(), label_lengths.data(),
-                                    sizes.data(),
-                                    A, B,
-                                    costs.data(),
-                                    rnnt_cpu_workspace,
-                                    options),
-                    "Error: compute_rnnt_loss (0) in run_test");
-    end = std::chrono::high_resolution_clock::now();
+    // average time
+    std::vector<float> time;
+    for (int i = 0; i < 10; ++i) {
+        start = std::chrono::high_resolution_clock::now();
+        throw_on_error(compute_rnnt_loss(trans_acts, pred_acts, trans_grads, pred_grads,
+                                        flat_labels.data(), label_lengths.data(),
+                                        sizes.data(),
+                                        A, B,
+                                        costs.data(),
+                                        rnnt_cpu_workspace,
+                                        options),
+                        "Error: compute_rnnt_loss (0) in run_test");
+        end = std::chrono::high_resolution_clock::now();
 
-    elapsed = end - start;
-    std::cout << "compute_rnnt_loss elapsed time: " << elapsed.count() * 1000 << " ms\n";
+        elapsed = end - start;
+        time.push_back(elapsed.count() * 1000);
+        std::cout << "compute_rnnt_loss elapsed time: " << elapsed.count() * 1000 << " ms\n";
+    }
+
+    float sum = 0;
+    for (int i = 0; i < 10; ++i) {
+        sum += time[i];
+    }
+    std::cout << "average 10 time cost: " << sum / time.size() << " ms\n";
 
     float cost = std::accumulate(costs.begin(), costs.end(), 0.);
 

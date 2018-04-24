@@ -28,10 +28,10 @@ args = parser.parse_args()
 fn = rnntloss() if args.np else RNNTLoss() 
 
 def wrap_and_call(acts, labels):
-    acts = autograd.Variable(torch.FloatTensor(acts),
-                             requires_grad=True)
+    acts = torch.FloatTensor(acts)
     if use_cuda:
         acts = acts.cuda()
+    acts = autograd.Variable(acts, requires_grad=True)
 
     lengths = [acts.shape[1]] * acts.shape[0]
     label_lengths = [len(l) for l in labels]
@@ -173,14 +173,14 @@ def time_test(blank=0):
     start = time.time()
     iters = 10
     for _ in range(iters):
-        cost, grad = wrap_and_call(acts, labels)
+        wrap_and_call(acts, labels)
     end = time.time()
 
     print("Time per iteration: {:.3f}(s)".format((end-start)/iters))
 
 
 if __name__ == "__main__":
-    use_cuda = False
+    use_cuda = True
     small_test()
     big_test()
     print("CPU Tests passed!")

@@ -2,6 +2,7 @@
 
 #include <tuple>
 #include <cmath>
+#include <cstring>
 #include <limits>
 #include <algorithm>
 #include <numeric>
@@ -237,33 +238,22 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
             betas[idx(t, u)] = log_sum_exp<ProbT>(emit, no_emit);
         }
     }
-    // 
+
     ProbT loglike = betas[0];
 
-    // if (batch_first) std::fill(grad, grad + maxT_ * maxU_ * alphabet_size_, 0);
     // Gradients w.r.t. log probabilities
-    grad[idx(T-1, U-1, blank_)] = alphas[idx(T-1, U-1)];
+    grad[idx(T-1, U-1, blank_)] = -std::exp(log_probs[idx(T-1, U-1, blank_)] + alphas[idx(T-1, U-1)] - loglike);
     for (int t = 0; t < T-1; ++t) {
         for (int u = 0; u < U; ++u) {
-            grad[idx(t, u, blank_)] = alphas[idx(t, u)] + betas[idx(t+1, u)];
+            ProbT g = alphas[idx(t, u)] + betas[idx(t+1, u)];
+            grad[idx(t, u, blank_)] = -std::exp(log_probs[idx(t, u, blank_)] + g - loglike);
         }
     }
 
     for (int t = 0; t < T; t++) {
         for (int u = 0; u < U-1; ++u) {
-            grad[idx(t, u, labels[u])] = alphas[idx(t, u)] + betas[idx(t, u+1)];
-        }
-    }
-    // grad maybe too far from log_probs
-    for (int t = 0; t < T; ++t) {
-        for (int u = 0; u < U; ++u) {
-            for (int v = 0; v < alphabet_size_; ++v) {
-                ProbT g = grad[idx(t, u, v)];
-                // NOTE if g is zero, means the gradient in this point is zero.
-                if (g != 0) {
-                    grad[idx(t, u, v)] = -std::exp(log_probs[idx(t, u, v)] + g - loglike);
-                }
-            }
+            ProbT g = alphas[idx(t, u)] + betas[idx(t, u+1)];
+            grad[idx(t, u, labels[u])] = -std::exp(log_probs[idx(t, u, labels[u])] + g - loglike);
         }
     }
 
@@ -279,19 +269,14 @@ CpuRNNT<ProbT>::cost_and_grad(ProbT* const log_probs,
                        const int* const label_lengths,
                        const int* const input_lengths) {
 
-    // ProbT* log_probs = static_cast<ProbT *>(workspace_);
-
-    // maxT_ = *std::max_element(input_lengths, input_lengths + minibatch_);
-    // maxU_ = *std::max_element(label_lengths, label_lengths + minibatch_) + 1;
-
     // per minibatch memory
     size_t per_minibatch_bytes = 0;
 
     // alphas & betas
     per_minibatch_bytes += sizeof(ProbT) * maxT_ * maxU_ * 2;
 
-    // do log_softmax in mxnet
-    // log_softmax(activations, log_probs, input_lengths);
+    // zero grads
+    memset(grads, 0, sizeof(ProbT) * maxT_ * maxU_ * alphabet_size_);
 
 #pragma omp parallel for 
     for (int mb = 0; mb < minibatch_; ++mb) {
@@ -317,16 +302,11 @@ CpuRNNT<ProbT>::score_forward(ProbT* const log_probs,
                        const int* const label_lengths,
                        const int* const input_lengths) {
 
-    // ProbT* log_probs = static_cast<ProbT *>(workspace_);
-
     // per minibatch memory
     size_t per_minibatch_bytes = 0;
 
     // alphas & betas
     per_minibatch_bytes += sizeof(ProbT) * maxT_ * maxU_ * 2;
-
-    //
-    // log_softmax(activations, log_probs, input_lengths);
 
 #pragma omp parallel for
     for (int mb = 0; mb < minibatch_; ++mb) {

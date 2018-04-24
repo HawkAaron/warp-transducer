@@ -48,7 +48,7 @@ extern "C" int cpu_rnnt(THFloatTensor *log_probs,
     options.batch_first = batch_first;
     options.loc = RNNT_CPU;
     options.num_threads = num_threads;
-#if defined(CTC_DISABLE_OMP) || defined(APPLE)
+#if defined(RNNT_DISABLE_OMP) || defined(APPLE)
     // have to use at least one
     options.num_threads = std::max(options.num_threads, (unsigned int) 1);
 #endif

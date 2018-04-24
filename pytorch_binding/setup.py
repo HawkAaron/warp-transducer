@@ -28,7 +28,7 @@ else:
 headers = ['src/cpu_binding.h']
 
 if enable_gpu:
-    extra_compile_args += ['-DWARPCTC_ENABLE_GPU']
+    extra_compile_args += ['-DWARPRNNT_ENABLE_GPU']
     headers += ['src/gpu_binding.h']
 
 if "WARP_RNNT_PATH" in os.environ:

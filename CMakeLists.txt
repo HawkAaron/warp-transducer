@@ -24,7 +24,7 @@ option(WITH_GPU "compile warp-rnnt with cuda." ${CUDA_FOUND})
 option(WITH_OMP "compile warp-rnnt with openmp." ON)
 
 if(NOT WITH_OMP)
-    add_definitions(-DCTC_DISABLE_OMP)
+    add_definitions(-DRNNT_DISABLE_OMP)
 endif()
 if (WITH_OMP)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")

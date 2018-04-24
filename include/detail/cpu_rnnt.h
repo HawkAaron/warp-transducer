@@ -155,6 +155,20 @@ CpuRNNT<ProbT>::log_softmax(const ProbT* const trans_acts, const ProbT* const pr
                                         - max_activation - std::log(denom);
         }
     }
+
+    printf("log softmax\n");
+    for (int mb = 0; mb < minibatch_; ++mb) {
+        printf("(%d, ...)\n", mb);
+        for (int t = 0; t < maxT_; ++t) {
+            for (int u = 0; u < maxU_; u++) {
+                for (int v = 0; v < alphabet_size_; ++v) {
+                    printf("%f ", log_probs[idx(t, u, v)])
+                }
+                printf("\n");
+            }
+            printf("\n");
+        }
+    }
 }
 
 template<typename ProbT>
@@ -263,6 +277,7 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* trans_grad, ProbT* pred_grad,
         }
     }
 
+    printf("compute_betas_and_grad beta %f\n", beta_);
     return beta_; // the last beta_ is loglike
 }
 

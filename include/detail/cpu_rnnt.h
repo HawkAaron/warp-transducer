@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <numeric>
 
-#if !defined(CTC_DISABLE_OMP) && !defined(APPLE)
+#if !defined(RNNT_DISABLE_OMP) && !defined(APPLE)
 #include <omp.h>
 #endif
 

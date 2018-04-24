@@ -15,14 +15,17 @@ import torch.autograd as autograd
 import torch.nn as nn
 
 from warprnnt_pytorch import RNNTLoss
-fn = RNNTLoss()
+from transducer_np import RNNTLoss as rnntloss
 
 parser = argparse.ArgumentParser(description='MXNet RNN Transducer Test.')
 parser.add_argument('B', type=int, default=1, help='batch size')
 parser.add_argument('T', type=int, default=300, help='time step')
 parser.add_argument('U', type=int, default=100, help='prediction step')
 parser.add_argument('V', type=int, default=60, help='vocab size')
+parser.add_argument('--np', default=False, action='store_true', help='numpy loss')
 args = parser.parse_args()
+
+fn = rnntloss() if args.np else RNNTLoss() 
 
 def wrap_and_call(acts, labels):
     acts = autograd.Variable(torch.FloatTensor(acts),

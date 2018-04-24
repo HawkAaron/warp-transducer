@@ -52,7 +52,7 @@ class RNNTLoss(Module):
     Parameters:
         size_average (bool): normalize the loss by the batch size
             (default: `False`)
-        blank_label (bool): default 0
+        blank_label (int): default 0
     """
     def __init__(self, size_average=False, blank_label=0, batch_first=True):
         super(RNNTLoss, self).__init__()

@@ -46,7 +46,6 @@ def backward_pass(log_probs, labels, blank):
             emit = betas[t, u+1] + log_probs[t, u, labels[u]]
             betas[t, u] = np.logaddexp(emit, no_emit)
 
-    print(betas)
     return betas, betas[0, 0]
 
 def compute_gradient(log_probs, alphas, betas, labels, blank):
@@ -95,12 +94,12 @@ def transduce_batch(probs, labels, flen, glen, blank=0):
 
 class _RNNT(Function):
     @staticmethod
-    def forward(ctx, trans_acts, pred_acts, labels, act_lens, label_lens):
+    def forward(ctx, trans_acts, pred_acts, labels, act_lens, label_lens, blank):
         is_cuda = True if trans_acts.is_cuda else False
         acts = trans_acts.unsqueeze(dim=2) + pred_acts.unsqueeze(dim=1)
         # grad to activations
         costs, grads = transduce_batch(acts.cpu().numpy(), labels.cpu().numpy(),
-                            act_lens.cpu().numpy(), label_lens.cpu().numpy())
+                            act_lens.cpu().numpy(), label_lens.cpu().numpy(), blank)
 
         costs = torch.FloatTensor([sum(costs)])
         grads = torch.Tensor(grads)
@@ -113,7 +112,7 @@ class _RNNT(Function):
     
     @staticmethod
     def backward(ctx, grad_output):
-        return ctx.grads[0], ctx.grads[1], None, None, None
+        return ctx.grads[0], ctx.grads[1], None, None, None, None
 
 class RNNTLoss(Module):
     """
@@ -122,13 +121,18 @@ class RNNTLoss(Module):
                 (default `False`)
         `blank_label` (int): default 0
     """
-    def __init__(self):
+    def __init__(self, blank_label=0, batch_first=True):
         super(RNNTLoss, self).__init__()
         self.rnnt = _RNNT.apply
+        self.blank = blank_label
+        self.batch_first = batch_first
     
     def forward(self, trans_acts, pred_acts, labels, act_lens, label_lens):
         assert len(labels.size()) == 2
         _assert_no_grad(labels)
         _assert_no_grad(act_lens)
         _assert_no_grad(label_lens)
-        return self.rnnt(trans_acts, pred_acts, labels, act_lens, label_lens)
+        if not self.batch_first:
+            trans_acts = trans_acts.transpose(0, 1)
+            pred_acts = pred_acts.transpose(0, 1)
+        return self.rnnt(trans_acts, pred_acts, labels, act_lens, label_lens, self.blank)

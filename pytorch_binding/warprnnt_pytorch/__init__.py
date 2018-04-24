@@ -21,9 +21,9 @@ class _RNNT(Function):
         minibatch_size = trans_acts.size(1)
         costs = torch.zeros(minibatch_size).cpu()
         loss_func(trans_acts, pred_acts,
-                  labels,
-                  act_lens,
-                  label_lens,
+                  labels.int().cpu(),
+                  act_lens.int().cpu(),
+                  label_lens.int().cpu(),
                   costs,
                   trans_grads, pred_grads,
                   blank_label,

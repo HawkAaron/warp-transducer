@@ -156,19 +156,20 @@ CpuRNNT<ProbT>::log_softmax(const ProbT* const trans_acts, const ProbT* const pr
         }
     }
 
-    printf("log softmax\n");
-    for (int mb = 0; mb < minibatch_; ++mb) {
-        printf("(%d, ...)\n", mb);
-        for (int t = 0; t < maxT_; ++t) {
-            for (int u = 0; u < maxU_; u++) {
-                for (int v = 0; v < alphabet_size_; ++v) {
-                    printf("%f ", log_probs[idx(t, u, v)])
-                }
-                printf("\n");
-            }
-            printf("\n");
-        }
-    }
+    // printf("log softmax\n");
+    // for (int mb = 0; mb < minibatch_; ++mb) {
+    //     printf("(%d, ...)\n", mb);
+    //     for (int t = 0; t < maxT_; ++t) {
+    //         for (int u = 0; u < maxU_; u++) {
+    //             int offset = ((t * maxU_ + u) * minibatch_ + mb) * alphabet_size_;
+    //             for (int v = 0; v < alphabet_size_; ++v) {
+    //                 printf("%f ", log_probs[v + offset]);
+    //             }
+    //             printf("\n");
+    //         }
+    //         printf("\n");
+    //     }
+    // }
 }
 
 template<typename ProbT>
@@ -245,6 +246,7 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* trans_grad, ProbT* pred_grad,
         for (int u = U-1; u >= 0; --u) {
             int p_offset = u * minibatch_ * alphabet_size_;
             beta_t = beta_; // assign current to top
+            beta_ = neg_inf<ProbT>(); // reset beta_
             beta_u = betas[u]; // assign last beta_u to right
             if (u == U-1) {
                 beta_t = neg_inf<ProbT>(); // top edge gradient
@@ -256,19 +258,19 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* trans_grad, ProbT* pred_grad,
                 beta_ = beta_u + log_probs[idx(t, u, blank_)];
             }
             if (u < U-1) {
-                beta_ = log_sum_exp<ProbT>(beta_, log_probs[idx(t, u, labels[u])]);
+                beta_ = log_sum_exp<ProbT>(beta_, beta_t + log_probs[idx(t, u, labels[u])]);
             }
             betas[u] = beta_;
             // gradient
             for (int v = 0; v < alphabet_size_; ++v) {
                 ProbT logpk = log_probs[idx(t, u, v)];
                 ProbT grad1 = std::exp(alphas[idx(t, u)] + beta_ + logpk - logll);
-                ProbT grad2 = alphas[idx(t, u)] + logpk - logll;
+                ProbT grad2 = neg_inf<ProbT>();
                 if (v == blank_) {
-                    grad2 += beta_u;
+                    grad2 = alphas[idx(t, u)] + logpk - logll + beta_u;
                 }
                 if (v == labels[u]) {
-                    grad2 += beta_t;
+                    grad2 = alphas[idx(t, u)] + logpk - logll + beta_t;
                 }
                 grad1 -= std::exp(grad2);
                 trans_grad[t_offset + v] += grad1;
@@ -277,7 +279,6 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* trans_grad, ProbT* pred_grad,
         }
     }
 
-    printf("compute_betas_and_grad beta %f\n", beta_);
     return beta_; // the last beta_ is loglike
 }
 

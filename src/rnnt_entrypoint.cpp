@@ -87,6 +87,9 @@ rnntStatus_t get_workspace_size(int maxT, int maxU,
     // alphas & betas
     per_minibatch_bytes += sizeof(float) * maxT * maxU * 2;
 
+    // blank & label log probability cache
+    per_minibatch_bytes += sizeof(float) * maxT * maxU * 2;
+
     *size_bytes = per_minibatch_bytes * minibatch;
 
     return RNNT_STATUS_SUCCESS;

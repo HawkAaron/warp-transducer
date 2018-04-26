@@ -86,11 +86,6 @@ private:
     int blank_;
     int num_threads_;
     bool batch_first;
-    // TODO omp_get_max_threads
-
-    // Only for seperate input
-    void log_softmax(const ProbT* const activations, ProbT* log_probs,
-                     const int* const input_lengths, const int* const label_lengths);
     
     ProbT cost_and_grad_kernel(const ProbT* const log_probs, ProbT* grad,
                                const int* const labels, int mb,
@@ -132,35 +127,6 @@ inline int CpuRNNT<ProbT>::CpuRNNT_index::operator()(int t, int u, int v) {
 }
 
 template<typename ProbT>
-void
-CpuRNNT<ProbT>::log_softmax(const ProbT* const activations, ProbT* log_probs,
-                     const int* const input_lengths, const int* const label_lengths) {
-
-#pragma omp parallel for
-    for (int mb = 0; mb < minibatch_; ++mb) {
-        for (int t = 0; t < input_lengths[mb]; ++t) {
-            for (int u = 0; u <= label_lengths[mb]; ++u) {
-                int col_offset = ((t * maxU_ + u) * minibatch_ + mb) * alphabet_size_;
-                if (batch_first) col_offset = ((mb * maxT_ + t) * maxU_ + u) * alphabet_size_;
-                ProbT max_activation = neg_inf<ProbT>();
-                for (int v = 0; v < alphabet_size_; ++v)
-                    max_activation = std::max(max_activation, activations[v + col_offset]);
-                
-                ProbT denom = ProbT(0.);
-                for (int v = 0; v < alphabet_size_; ++v) {
-                    denom += std::exp(activations[v + col_offset] - max_activation);
-                }
-
-                for (int v = 0; v < alphabet_size_; ++v) {
-                    log_probs[v + col_offset] = activations[v + col_offset]
-                                                - max_activation - std::log(denom);
-                }
-            }
-        }
-    }
-}
-
-template<typename ProbT>
 ProbT
 CpuRNNT<ProbT>::cost_and_grad_kernel(const ProbT* const log_probs, ProbT* grad,
                               const int* const labels,
@@ -191,20 +157,18 @@ CpuRNNT<ProbT>::compute_alphas(const ProbT* const log_probs, int T, int U,
     CpuRNNT_index idx(U, maxU_, minibatch_, alphabet_size_, batch_first);
 
     alphas[0] = 0;
-    // TODO using one loop to optimize memory continuous fetching
-    for (int t = 1; t < T; ++t) {
-        alphas[idx(t, 0)] = alphas[idx(t-1, 0)] + log_probs[idx(t-1, 0, blank_)];
-    }
 
-    for (int u = 1; u < U; ++u) {
-        alphas[idx(0, u)] = alphas[idx(0, u-1)] + log_probs[idx(0, u-1, labels[u-1])];
-    }
-
-    for (int t = 1; t < T; ++t) {
-        for (int u = 1; u < U; ++u) {
-            ProbT no_emit = alphas[idx(t-1, u)] + log_probs[idx(t-1, u, blank_)];
-            ProbT emit = alphas[idx(t, u-1)] + log_probs[idx(t, u-1, labels[u-1])];
-            alphas[idx(t, u)] = log_sum_exp<ProbT>(emit, no_emit);
+    for (int t = 0; t < T; ++t) {
+        for (int u = 0; u < U; ++u) {
+            if (u == 0 && t > 0)
+                alphas[idx(t, 0)] = alphas[idx(t-1, 0)] + log_probs[idx(t-1, 0, blank_)];
+            if (t == 0 && u > 0)
+                alphas[idx(0, u)] = alphas[idx(0, u-1)] + log_probs[idx(0, u-1, labels[u-1])];
+            if (t > 0 && u > 0) {
+                ProbT no_emit = alphas[idx(t-1, u)] + log_probs[idx(t-1, u, blank_)];
+                ProbT emit = alphas[idx(t, u-1)] + log_probs[idx(t, u-1, labels[u-1])];
+                alphas[idx(t, u)] = log_sum_exp<ProbT>(emit, no_emit);
+            }
         }
     }
 
@@ -222,20 +186,18 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
     CpuRNNT_index idx(U, maxU_, minibatch_, alphabet_size_, batch_first);
 
     betas[idx(T-1, U-1)] = log_probs[idx(T-1, U-1, blank_)];
-    // TODO using one for loop to optimize memory continuous fetching
-    for (int t = T-2; t >= 0; --t) {
-        betas[idx(t, U-1)] = betas[idx(t+1, U-1)] + log_probs[idx(t, U-1, blank_)];
-    }
 
-    for (int u = U-2; u >= 0; --u) {
-        betas[idx(T-1, u)] = betas[idx(T-1, u+1)] + log_probs[idx(T-1, u, labels[u])];
-    }
-
-    for (int t = T-2; t >= 0; --t) {
-        for (int u = U-2; u >= 0; --u) {
-            ProbT no_emit = betas[idx(t+1, u)] + log_probs[idx(t, u, blank_)];
-            ProbT emit = betas[idx(t, u+1)] + log_probs[idx(t, u, labels[u])];
-            betas[idx(t, u)] = log_sum_exp<ProbT>(emit, no_emit);
+    for (int t = T-1; t >= 0; --t) {
+        for (int u = U-1; u >= 0; --u) {
+            if (u == U-1 && t < T-1)
+                betas[idx(t, U-1)] = betas[idx(t+1, U-1)] + log_probs[idx(t, U-1, blank_)];
+            if (t == T-1 && u < U-1)
+                betas[idx(T-1, u)] = betas[idx(T-1, u+1)] + log_probs[idx(T-1, u, labels[u])];
+            if (t < T-1 && u < U-1) {
+                ProbT no_emit = betas[idx(t+1, u)] + log_probs[idx(t, u, blank_)];
+                ProbT emit = betas[idx(t, u+1)] + log_probs[idx(t, u, labels[u])];
+                betas[idx(t, u)] = log_sum_exp<ProbT>(emit, no_emit);
+            }
         }
     }
 
@@ -243,17 +205,16 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
 
     // Gradients w.r.t. log probabilities
     grad[idx(T-1, U-1, blank_)] = -std::exp(log_probs[idx(T-1, U-1, blank_)] + alphas[idx(T-1, U-1)] - loglike);
-    for (int t = 0; t < T-1; ++t) {
+    for (int t = 0; t < T; ++t) {
         for (int u = 0; u < U; ++u) {
-            ProbT g = alphas[idx(t, u)] + betas[idx(t+1, u)];
-            grad[idx(t, u, blank_)] = -std::exp(log_probs[idx(t, u, blank_)] + g - loglike);
-        }
-    }
-
-    for (int t = 0; t < T; t++) {
-        for (int u = 0; u < U-1; ++u) {
-            ProbT g = alphas[idx(t, u)] + betas[idx(t, u+1)];
-            grad[idx(t, u, labels[u])] = -std::exp(log_probs[idx(t, u, labels[u])] + g - loglike);
+            if (t < T-1) {
+                ProbT g = alphas[idx(t, u)] + betas[idx(t+1, u)];
+                grad[idx(t, u, blank_)] = -std::exp(log_probs[idx(t, u, blank_)] + g - loglike);
+            }
+            if (u < U-1) {
+                ProbT g = alphas[idx(t, u)] + betas[idx(t, u+1)];
+                grad[idx(t, u, labels[u])] = -std::exp(log_probs[idx(t, u, labels[u])] + g - loglike);
+            }
         }
     }
 

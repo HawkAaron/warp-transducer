@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <numeric>
 
+#include <chrono>
+
 #if !defined(RNNT_DISABLE_OMP) && !defined(APPLE)
 #include <omp.h>
 #endif
@@ -161,6 +163,11 @@ CpuRNNT<ProbT>::cost_and_grad_kernel(const ProbT* const log_probs, ProbT* grad,
     CpuRNNT_index idx(U, maxU_, minibatch_, alphabet_size_, batch_first);
     CpuRNNT_metadata rnntm(T, U, workspace_, bytes_used, blank_, labels, log_probs, idx);
 
+    if (batch_first) {
+        // zero grads
+        memset(grad, 0, sizeof(ProbT) * maxT_ * maxU_ * alphabet_size_);
+    }
+
     ProbT llForward = compute_alphas(rnntm.log_probs2, T, U, rnntm.alphas);
     ProbT llBackward = compute_betas_and_grad(grad, rnntm.log_probs2, T, U,
                                               rnntm.alphas, 
@@ -264,9 +271,6 @@ CpuRNNT<ProbT>::cost_and_grad(ProbT* const log_probs,
 
     // blank & label log probability cache
     per_minibatch_bytes += sizeof(ProbT) * maxT_ * maxU_ * 2;
-
-    // zero grads
-    memset(grads, 0, sizeof(ProbT) * maxT_ * maxU_ * alphabet_size_);
 
 #pragma omp parallel for 
     for (int mb = 0; mb < minibatch_; ++mb) {

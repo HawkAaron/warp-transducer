@@ -180,7 +180,7 @@ def time_test(blank=0):
 
 
 if __name__ == "__main__":
-    use_cuda = True
+    use_cuda = False
     small_test()
     big_test()
     print("CPU Tests passed!")

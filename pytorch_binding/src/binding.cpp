@@ -32,9 +32,9 @@ extern "C" int cpu_rnnt(THFloatTensor *trans_acts,
     int *label_lengths_ptr = THIntTensor_data(label_lengths);
     float *costs_ptr = THFloatTensor_data(costs);
 
-    int maxT = trans_acts->size[0];
-    int maxU = pred_acts->size[0];
-    int minibatch_size = trans_acts->size[1];
+    int maxT = trans_acts->size[1];
+    int maxU = pred_acts->size[1];
+    int minibatch_size = trans_acts->size[0];
     int alphabet_size = trans_acts->size[2];
 
     rnntOptions options;

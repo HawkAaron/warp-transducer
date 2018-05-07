@@ -71,6 +71,14 @@ def small_test():
     assert np.allclose(pred_acts.grad.data.numpy(), expected_pred_grads), \
         "pred gradient mismathc."
 
+def show(act):
+    """ numpy array """
+    act = act.reshape(-1)
+    for i, a in enumerate(act):
+        if i % 6 == 0: print()
+        print(a, ', ', end='')
+    print()
+
 def big_test():
     B = 2; T = 4; U = 3; V = 6; blank = 5
     trans_acts = torch.autograd.Variable(torch.Tensor([0.20836472511291504 ,0.6848891377449036 ,0.8508703112602234 ,0.5761988759040833 ,0.19992691278457642 ,0.8066366910934448 ,
@@ -90,8 +98,11 @@ def big_test():
                                                     0.7007454037666321 ,0.6552602648735046 ,0.5205059051513672 ,0.30149775743484497 ,0.605181872844696 ,0.1901898980140686 ,
                                                     0.9128827452659607 ,0.6805384159088135 ,0.019013822078704834 ,0.8405444622039795 ,0.5298664569854736 ,0.27262967824935913]
                                                     ).view(U, B, V), requires_grad=True)
-
-    # acts = trans_acts.unsqueeze(dim=2) + pred_acts.unsqueeze(dim=1)
+    print('trans_acts')
+    show(trans_acts.transpose(0,1).data.numpy())
+    print('pred_acts')
+    show(pred_acts.transpose(0,1).data.numpy())
+    # acts = trans_acts.unsqueeze(dim=1) + pred_acts.unsqueeze(dim=0)
     # acts = torch.nn.functional.log_softmax(acts, dim=3)
 
     label = torch.autograd.Variable(torch.IntTensor([[1, 2], [1, 1]]))
@@ -118,7 +129,10 @@ def big_test():
                                     0.4035489857196808 ,-0.5864231586456299 ,0.24028921127319336 ,0.3576064705848694 ,0.20584842562675476 ,-0.6208699345588684 ,
                                     0.4579349160194397 ,0.31794747710227966 ,0.35017895698547363 ,0.26747676730155945 ,0.3649044632911682 ,-1.7584426403045654 ,
                                     0.38415825366973877 ,0.30689966678619385 ,0.15302574634552002 ,0.3225018382072449 ,0.18354131281375885 ,-1.35012686252594]).reshape(U, B, V)
-
+    print('trans_grads')
+    show(expected_trans_grads.transpose(1, 0, 2))
+    print('pred_grads')
+    show(expected_pred_grads.transpose(1, 0, 2))
     assert np.allclose(loss.data.numpy(), expected_cost), \
         "costs mismath."
     assert np.allclose(trans_acts.grad.data.numpy(), expected_trans_grads), \

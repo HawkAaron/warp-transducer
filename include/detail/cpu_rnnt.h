@@ -237,7 +237,6 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
     ProbT loglike = betas[0];
 
     // Gradients w.r.t. log probabilities
-    grad[idx(T-1, U-1, blank_)] = -std::exp(log_probs[idx(T-1, U-1) * 2] + alphas[idx(T-1, U-1)] - loglike);
     for (int t = 0; t < T; ++t) {
         for (int u = 0; u < U; ++u) {
             if (t < T-1) {
@@ -250,6 +249,8 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
             }
         }
     }
+    // gradient to the last blank transition
+    grad[idx(T-1, U-1, blank_)] = -std::exp(log_probs[idx(T-1, U-1) * 2] + alphas[idx(T-1, U-1)] - loglike);
 
     return loglike;
 }

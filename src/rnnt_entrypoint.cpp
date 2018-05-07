@@ -32,8 +32,8 @@ const char* rnntGetStatusString(rnntStatus_t status) {
 }
 
 
-rnntStatus_t compute_rnnt_loss(const float* const trans_acts, // TBV
-                             const float* const pred_acts,    // UBV
+rnntStatus_t compute_rnnt_loss(const float* const trans_acts, // BTV
+                             const float* const pred_acts,    // BUV
                              float* trans_grad,
                              float* pred_grad,
                              const int* const flat_labels,

@@ -123,22 +123,21 @@ inline int CpuRNNT<ProbT>::CpuRNNT_index::operator()(int t, int u) {
 
 template<typename ProbT>
 inline int CpuRNNT<ProbT>::CpuRNNT_index::operator()(int t, int u, int v) {
-    return (t * maxU + u) * minibatch * alphabet_size + v;
+    return (t * maxU + u) * alphabet_size + v;
 }
 
 template<typename ProbT>
 void
 CpuRNNT<ProbT>::log_softmax(const ProbT* const trans_acts, const ProbT* const pred_acts, ProbT* log_probs) {
-// TBV UBV TUBV
+// BTV BUV BTUV
 #pragma omp parallel for
     for (int c = 0; c < minibatch_ * maxT_ * maxU_; ++c) {
-        int mb = c % minibatch_;
-        int tu = (c - mb) / minibatch_;
-        int u = tu % maxU_;
-        int t = (tu - u) / maxU_;
-        int t_offset = (t * minibatch_ + mb) * alphabet_size_;
-        int u_offset = (u * minibatch_ + mb) * alphabet_size_;
-
+        int u = c % maxU_;
+        int tb = (c - u) / maxU_;
+        int t = tb % maxT_;
+        int mb = (tb - t) / maxT_;
+        int t_offset = (mb * maxT_ + t) * alphabet_size_;
+        int u_offset = (mb * maxU_ + u) * alphabet_size_;
         int col_offset = c * alphabet_size_;
         ProbT max_activation = neg_inf<ProbT>();
         for (int v = 0; v < alphabet_size_; ++v)
@@ -161,7 +160,8 @@ CpuRNNT<ProbT>::log_softmax(const ProbT* const trans_acts, const ProbT* const pr
     //     printf("(%d, ...)\n", mb);
     //     for (int t = 0; t < maxT_; ++t) {
     //         for (int u = 0; u < maxU_; u++) {
-    //             int offset = ((t * maxU_ + u) * minibatch_ + mb) * alphabet_size_;
+    //             int offset = ((mb * maxT_ + t) * maxU_ + u) * alphabet_size_;
+    //             // int offset = ((t * maxU_ + u) * minibatch_ + mb) * alphabet_size_;
     //             for (int v = 0; v < alphabet_size_; ++v) {
     //                 printf("%f ", log_probs[v + offset]);
     //             }
@@ -242,9 +242,9 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* trans_grad, ProbT* pred_grad,
     betas[U-1] = 0; // last point gradient
 
     for (int t = T-1; t >= 0; --t) {
-        int t_offset = t * minibatch_ * alphabet_size_;
+        int t_offset = t * alphabet_size_;
         for (int u = U-1; u >= 0; --u) {
-            int p_offset = u * minibatch_ * alphabet_size_;
+            int p_offset = u * alphabet_size_;
             beta_t = beta_; // assign current to top
             beta_ = neg_inf<ProbT>(); // reset beta_
             beta_u = betas[u]; // assign last beta_u to right
@@ -313,9 +313,9 @@ CpuRNNT<ProbT>::cost_and_grad(const ProbT* const trans_acts,
         const int T = input_lengths[mb];     // Length of utterance (time)
         const int U = label_lengths[mb] + 1; // Number of labels in transcription
 
-        costs[mb] = cost_and_grad_kernel(log_probs + mb * alphabet_size_,
-                             trans_grads + mb * alphabet_size_,
-                             pred_grads + mb * alphabet_size_,
+        costs[mb] = cost_and_grad_kernel(log_probs + mb * alphabet_size_ * maxT_ * maxU_,
+                             trans_grads + mb * alphabet_size_ * maxT_,
+                             pred_grads + mb * alphabet_size_ * maxU_,
                              flat_labels + std::accumulate(label_lengths, label_lengths + mb, 0),
                              T, U, bytes_used + mb * per_minibatch_bytes);
     }
@@ -350,7 +350,7 @@ CpuRNNT<ProbT>::score_forward(const ProbT* const trans_acts,
 
         CpuRNNT_metadata rnntm(T, U, workspace_, bytes_used + mb * per_minibatch_bytes);
 
-        costs[mb] = -compute_alphas(log_probs + mb * alphabet_size_, T, U, 
+        costs[mb] = -compute_alphas(log_probs + mb * alphabet_size_ * maxT_ * maxU_, T, U, 
                             rnntm.alphas, 
                             flat_labels + std::accumulate(label_lengths, label_lengths + mb, 0));
     }

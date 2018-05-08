@@ -80,7 +80,15 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
     for (int i = 0; i < 10; ++i) {
         sum += time[i];
     }
-    std::cout << "average 10 time cost: " << sum / time.size() << " ms\n";
+    sum /= time.size();
+
+    float std = 0;
+    for (int i = 0; i < 10; ++i) {
+        std += (time[i] - sum) * (time[i] - sum);
+    }
+    std /= time.size();
+
+    std::cout << "average 10 time cost: " << sum << " ms variance: " << std << std::endl;
 
     float cost = std::accumulate(costs.begin(), costs.end(), 0.);
 

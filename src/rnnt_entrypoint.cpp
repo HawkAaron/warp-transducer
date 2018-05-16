@@ -32,8 +32,8 @@ const char* rnntGetStatusString(rnntStatus_t status) {
 }
 
 
-rnntStatus_t compute_rnnt_loss(const float* const trans_acts, // BTV
-                             const float* const pred_acts,    // BUV
+rnntStatus_t compute_rnnt_loss(float* const trans_acts, // BTV
+                             float* const pred_acts,    // BUV
                              float* trans_grad,
                              float* pred_grad,
                              const int* const flat_labels,
@@ -91,14 +91,12 @@ rnntStatus_t get_workspace_size(int maxT, int maxU,
     // per minibatch memory
     size_t per_minibatch_bytes = 0;
 
-    // alphas
+    // alphas & betas
+    per_minibatch_bytes += sizeof(float) * maxT * maxU * 2;
+
+    // log_p, NOTE here just store the (denominator + maximum)
+    // but for softmax, we need both maximum and denominator
     per_minibatch_bytes += sizeof(float) * maxT * maxU;
-
-    // betas
-    per_minibatch_bytes += sizeof(float) * maxU;
-
-    // log_p
-    per_minibatch_bytes += sizeof(float) * maxT * maxU * alphabet_size;
 
     *size_bytes = per_minibatch_bytes * minibatch;
 

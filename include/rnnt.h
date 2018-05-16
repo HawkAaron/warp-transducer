@@ -100,8 +100,8 @@ struct rnntOptions {
  *  \return Status information
  *
  * */
-rnntStatus_t compute_rnnt_loss(const float* const trans_acts,
-                             const float* const pred_acts,
+rnntStatus_t compute_rnnt_loss(float* const trans_acts,
+                             float* const pred_acts,
                              float* trans_grad,
                              float* pred_grad,
                              const int* const flat_labels,

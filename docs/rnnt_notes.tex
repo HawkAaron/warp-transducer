@@ -1,0 +1,171 @@
+\documentclass{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{physics}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\title{Notes on Sequence Transduction with Recurrent Neural Networks}
+\author{Mingkun Huang}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\def \x {\mathbf{x}}
+\def \y {\mathbf{y}}
+\def \a {\mathbf{a}}
+\def \f {\mathbf{f}}
+\def \g {\mathbf{g}}
+\def \X {\mathcal{X}}
+\def \Y {\mathcal{Y}}
+
+\section{Recurrent Neural Network Transducer}
+Let $\x = (x_1, x_2, \dots, x_T)$ be a length $T$ $input\ sequence$ of arbitrary length belonging to the set $\X^*$ of all sequences over some input space $\X$.
+Let $\y = (y_1, y_2, \dots, y_U)$ be a length $U$ $output\ sequence$ belonging to the set $\Y^*$ of all sequences over some output space $\Y$.
+Both the inputs vectors $x_t$ and the output vectors $y_u$ are represented by fixed-length real-valued vectors.
+
+Define the extended output space $\bar{\Y}$ as $\Y \cup \varnothing$, where $\varnothing$ denotes the $null$ output.
+We refer to the elements $\a \in \bar{\Y}^*$ as $alignments$, since the location of the null symbols determines an alignment between the input and output sequences.
+Given $\x$, the RNN transducer defines a conditional distribution $\Pr(\a \in \bar{\Y}^* | \x)$. 
+This distribution is then collapsed onto the following distribution over $\Y^*$
+\begin{equation}
+    \Pr(\y \in \Y^* | \x) = \sum_{\a \in \mathcal{B}^{-1}(\y)} \Pr(\a | \x)
+\end{equation}
+where $\mathcal{B}: \bar{\Y}^* \rightarrow \Y^*$ is a function that removes the null symbols from the alignments in $\bar{\Y}^*$.
+
+Two recurrent neural networks are used to determine $\Pr(\a \in \bar{\Y}^* | \x)$.
+One network, referred to as the $transcription\ network\ \mathcal{F}$, scans the input sequence $\x$ and outputs the sequence $\f = (f_1, \dots, f_T)$ of transcription vectors\footnote{For simplicity we assume the transcription sequence to be the same length as the input sequence; however this may not be true, for example if the transcription network uses a pooling architecture to reduce the sequence length.}.
+The other network, referred to as the $prediction\ network\ \mathcal{G}$, scans the output sequence $\y$ and outputs the prediction vector sequence $\g = (g_0, g_1, \dots, g_U)$.
+
+\subsection{Prediction Network}
+The prediction network $\mathcal{G}$ is a recurrent neural network consisting of an input layer, an output layer and a single hidden layer.
+The length $U + 1$ input sequence $\y^* = (\varnothing, y_1, \dots, y_U)$ to $\mathcal{G}$ output sequence $\y$ with $\varnothing$ prepended.
+If $\Y$ consists of $K$ labels, the input layer is therefore size $K$. $\varnothing$ is encoded as a length $K$ vector of zeros.
+The output layer is size $K + 1$ (one unit for each element of $\bar{\Y}$) and hence the prediction vectors $g_u$ are also size $K + 1$.
+
+The prediction network attempts to model each element of $\y$ given the previous ones; it is therefore similar to a standard next-step-prediction RNN, only with the added option of makeing $null$ predictions.
+Since the input and output lengths are equal, we can apply attention onto it with the output of transcription network.
+
+\subsection{Transcription Network}
+The transcription network $\mathcal{F}$ is an arbitrary representation learning network.
+Given a length $T$ input sequence $(x_1, \dots, x_T)$, it outputs the same length hidden vectors $(f_1, \dots, f_T)$ with each vector size $K + 1$.
+
+The transcription network is similar to a CTC RNN, which also uses a null output to define a distribution over input-output alignments.
+
+\subsection{Output Distribution}
+Given the transcription vector $f_t$, where $1 \leq t \leq T$, the prediction vector $g_u$, where $0 \leq u \leq U$, and label $k \in \bar{\Y}$, define the \textit{log output density function}
+\begin{equation} \label{eq:add}
+    h(k, t, u) = f_t^k + g_u^k
+\end{equation}
+where superscript $k$ denotes the $k^{th}$ element of the vectors. The density can be softmaxed to yield the conditional $output\ distribution$
+\begin{equation} \label{eq:softmax}
+    \Pr(k \in \bar{\Y} | t, u) = \frac{e^{h(k, t, u)}}{\sum_{k' \in \bar{\Y}} e^{h(k', t, u)}}
+\end{equation}
+To simplify notation, define
+\begin{equation}
+    \begin{split}
+        y(t, u) &:= \Pr(y_{u+1} | t, u) \\
+        \varnothing(t, u) &:= \Pr(\varnothing | t, u)
+    \end{split}
+\end{equation}
+$\Pr(k | t, u)$ is used to determine the transition probabilities in the lattice shown in~\cite{graves2012rnnt}. For any specific node, there are at most two transitions.
+
+\subsection{Forward-Backward Algorithm}
+Define the $forward\ variable\ \alpha(t, u)$ as the probability of outputting $\y_{[1:u]}$ during $\f_{[1:t]}$. The forward variables for all $1 \leq t \leq T$ and $0 \leq u \leq U$ can be calculated recursively using
+\begin{equation} \label{eq:alpha}
+    \alpha(t, u) = \alpha(t-1, u) \cdot \varnothing(t-1, u) + \alpha(t, u-1) \cdot y(t, u-1)
+\end{equation}
+with initial condition $\alpha(1, 0) = 1$. The total output sequence probability is equal to the forward variable at the terminal node:
+\begin{equation}
+    \Pr(\y | \x) = \alpha(T, U) \cdot \varnothing(T, U)
+\end{equation}
+
+Define the $backward\ variable\ \beta(t, u)$ as the probability of outputting $\y_{[u+1:U]}$ during $\f_{[t:T]}$. Then
+\begin{equation} \label{eq:beta}
+    \beta(t, u) = \beta(t+1, u) \cdot \varnothing(t, u) + \beta(t, u+1) \cdot y(t, u)
+\end{equation}
+with initial condition $\beta(T, U) = \varnothing(T, U)$.
+From the definition of the forward and backward variables it follows that their product $\alpha(t, u) \cdot \beta(t, u)$ at any point $(t, u)$ in the output lattice is equal to the probability of emitting the complete output sequence 
+\textit{if $y_u$ is emitted during transcription step $t$}.
+
+\subsection{Training}
+Given an input sequence $\x$ and a \textit{target sequence} $\y^*$, the natural way to train the model is to minimize the negtive log likelihood $\mathcal{L} = -\ln \Pr(\y^* | \x)$ of the target sequence.
+Analysing the diffusion of probability through the output lattice shows that $\Pr(\y^* | \x)$ is equal to the sum of $\alpha(t, u) \cdot \beta(t, u)$ over any top-left to bottom-right diagonal through the nodes. That is,
+$\forall n : 1 \leq n \leq U + T$
+\begin{equation} \label{eq:pyx}
+    \Pr(\y^* | \x) = \sum_{(t,u): t+u=n} \alpha(t, u) \cdot \beta(t, u)
+\end{equation}
+From Eqs. (\ref{eq:alpha}), (\ref{eq:beta}) and (\ref{eq:pyx}) and the definition of $\mathcal{L}$ it follows that
+\begin{equation} \label{eq:grad_pr}
+    \frac{\partial \mathcal{L}}{\partial \Pr(k|t,u)} = -\frac{\alpha(t,u)}{\Pr(\y^*|\x)}
+    \begin{cases}
+        \beta(t, u+1) & \text{if } k = y_{u+1} \\
+        \beta(t+1, u) & \text{if } k = \varnothing \\
+        1 & \text{if } k = \varnothing, t = T, u = U \\
+        0 & \text{otherwise}
+    \end{cases}
+\end{equation}
+And therefore
+\begin{equation}
+    \begin{split}
+        \frac{\partial \mathcal L}{\partial h(k,t,u)} = \sum_{k' \in \bar{\Y}} \frac{\partial \mathcal L}{\Pr(k'|t,u)} \frac{\partial \Pr(k'|t,u)}{\partial h(k,t,u)}
+    \end{split}
+\end{equation}
+where, from Eq. (\ref{eq:softmax})
+\begin{equation}
+    \frac{\partial \Pr(k'|t,u)}{\partial h(k,t,u)} = \Pr(k'|t,u)[\delta_{k,k'} - \Pr(k|t,u)]
+\end{equation}
+Then we have
+\begin{equation} \label{eq:grad_acts}
+    \begin{split}
+        \frac{\partial \mathcal L}{\partial h(k,t,u)} &= 
+            -\frac{\alpha(t,u)}{\Pr(\y^*|\x)} \left \{ \beta(t, u+1) \cdot y(t,u) \cdot [\delta_{k,y_{u+1}} - \Pr(k|t,u)] + 
+                \beta(t+1, u) \cdot \varnothing(t,u) \cdot [\delta_{k,\varnothing} - \Pr(k|t,u)] \right \} \\
+        &= -\frac{\alpha(t,u)}{\Pr(\y^*|\x)} 
+            \begin{cases}
+                \beta(t, u+1) \cdot y(t,u) \cdot [1 - y(t,u)] + \beta(t+1, u) \cdot \varnothing(t,u) \cdot (-y(t,u)), & k = y_{u+1} \\
+                \beta(t, u+1) \cdot y(t,u) \cdot (-\varnothing(t,u)) + \beta(t+1, u) \cdot \varnothing(t,u) \cdot (1 - \varnothing(t,u)), & k = \varnothing \\
+                \varnothing(t,u) \cdot (1 - \beta(t,u)), & k = \varnothing, t = T, u = U \\
+                \beta(t, u+1) \cdot y(t,u) \cdot (-\Pr(k|t,u)) + \beta(t+1, u) \cdot \varnothing(t,u) \cdot (-\Pr(k|t,u)), & \text{otherwise}
+            \end{cases} \\
+        &= -\frac{\alpha(t,u)}{\Pr(\y^*|\x)}
+            \begin{cases}
+                \beta(t, u+1) \cdot y(t,u) - \beta(t, u) \cdot y(t,u), & k = y_{u+1}, u < U \\
+                \beta(t+1, u) \cdot \varnothing(t,u) - \beta(t, u) \cdot \varnothing(t,u), & k = \varnothing, t < T \\
+                \varnothing(t,u) - \beta(t, u) \cdot \varnothing(t,u), & k = \varnothing, t = T, u = U \\
+                -\beta(t, u) \cdot \Pr(k|t,u), & \text{otherwise} \\
+            \end{cases} \\
+        &= \frac{\alpha(t,u) \cdot \Pr(k|t,u)}{\Pr(\y^*|\x)} \cdot \beta(t,u) - \frac{\alpha(t,u) \cdot \Pr(k|t,u)}{\Pr(\y^*|\x)}
+            \begin{cases}
+                \beta(t, u+1), & k = y_{u+1}, u < U \\
+                \beta(t+1, u), & k = \varnothing, t < T \\
+                1, & k = \varnothing, t = T, u = U \\
+                0, & \text{otherwise} \\
+            \end{cases}
+    \end{split}
+\end{equation}
+From Eq. (\ref{eq:add})
+\begin{equation}
+    \begin{split}
+        \frac{\partial \mathcal L}{\partial f_t^k} &= \sum_{u=0}^U \frac{\partial \mathcal L}{\partial h(k,t,u)} \\
+        \frac{\partial \mathcal L}{\partial g_u^k} &= \sum_{t=0}^T \frac{\partial \mathcal L}{\partial h(k,t,u)} \\
+    \end{split}
+\end{equation}
+
+There are two ways to calculate the gradient:
+\begin{itemize}
+    \item Gradient to softmax output (Eq. \ref{eq:grad_pr}). \\
+    Easy to program. But consumes too much memory.
+    \item Gradient to activations (Eq. \ref{eq:grad_acts}). \\
+    Memory efficient, can be accelerated in GPU.
+\end{itemize}
+Note that in practical programming, all probabilities are in log scale. Since the calculation may overflow float point, we calculate the two terms in Eq. (\ref{eq:grad_acts}) seperately.
+
+\begin{thebibliography}{1}
+\bibitem{graves2012rnnt}
+Alex Graves.
+Sequence Transduction with Recurrent Neural Network,
+arXiv preprint arXiv:1211.3711, 2012.
+\end{thebibliography}
+
+\end{document}

@@ -13,7 +13,7 @@
 #endif
 
 #include "reduce.h"
-#include "cpu_rnnt_kernel.h"
+#include "gpu_rnnt_kernel.h"
 
 template<typename ProbT>
 class GpuRNNT {
@@ -72,28 +72,28 @@ void
 GpuRNNT<ProbT>::log_softmax(const ProbT* const ft, const ProbT* const gu, ProbT* denom) {
 
     // trans_acts + pred_acts -> log_softmax denominator
-    // reduce_max(ft, gu, denom, alphabet_size_, minibatch_ * maxT_ * maxU_, maxT_, maxU_, 0, stream_);
-    // reduce_exp(ft, gu, denom, alphabet_size_, minibatch_ * maxT_ * maxU_, maxT_, maxU_, 1, stream_);
-    for (int mb = 0; mb < minibatch_; ++mb) {
-        for (int t = 0; t < maxT_; ++t) {
-            for (int u = 0; u < maxU_; ++u) {
-                int t_offset = (mb * maxT_ + t)* alphabet_size_;
-                int u_offset = (mb * maxU_ + u) * alphabet_size_;
-                ProbT max_activation = neg_inf<ProbT>();
+    reduce_max(ft, gu, denom, alphabet_size_, minibatch_ * maxT_ * maxU_, maxT_, maxU_, 0, stream_);
+    reduce_exp(ft, gu, denom, alphabet_size_, minibatch_ * maxT_ * maxU_, maxT_, maxU_, 1, stream_);
+    // for (int mb = 0; mb < minibatch_; ++mb) {
+    //     for (int t = 0; t < maxT_; ++t) {
+    //         for (int u = 0; u < maxU_; ++u) {
+    //             int t_offset = (mb * maxT_ + t)* alphabet_size_;
+    //             int u_offset = (mb * maxU_ + u) * alphabet_size_;
+    //             ProbT max_activation = neg_inf<ProbT>();
 
-                for (int v = 0; v < alphabet_size_; ++v)
-                    max_activation = std::max(max_activation, ft[v + t_offset] + gu[v + u_offset]);
+    //             for (int v = 0; v < alphabet_size_; ++v)
+    //                 max_activation = std::max(max_activation, ft[v + t_offset] + gu[v + u_offset]);
                 
-                ProbT de = ProbT(0.);
-                for (int v = 0; v < alphabet_size_; ++v) {
-                    de += std::exp(ft[v + t_offset] + gu[v + u_offset] - max_activation);
-                }
+    //             ProbT de = ProbT(0.);
+    //             for (int v = 0; v < alphabet_size_; ++v) {
+    //                 de += std::exp(ft[v + t_offset] + gu[v + u_offset] - max_activation);
+    //             }
 
-                // here only store denominator
-                denom[(mb * maxT_ + t) * maxU_ + u] = -max_activation - std::log(de);
-            }
-        }
-    }
+    //             // here only store denominator
+    //             denom[(mb * maxT_ + t) * maxU_ + u] = -max_activation - std::log(de);
+    //         }
+    //     }
+    // }
 }
 
 template<typename ProbT>
@@ -120,8 +120,8 @@ GpuRNNT<ProbT>::cost_and_grad(ProbT* const trans_acts_cpu,
     bytes *= minibatch_;
 
     void * gpu_workspace;
-    // cudaMalloc(&gpu_workspace, bytes);
-    gpu_workspace = malloc(bytes);
+    cudaMalloc(&gpu_workspace, bytes);
+    // gpu_workspace = malloc(bytes);
     size_t bytes_used = 0;
     // acts
     ProbT* trans_acts = reinterpret_cast<ProbT*>(static_cast<char*>(gpu_workspace));
@@ -155,27 +155,27 @@ GpuRNNT<ProbT>::cost_and_grad(ProbT* const trans_acts_cpu,
     int* ylen = reinterpret_cast<int*>(static_cast<char*>(gpu_workspace) + bytes_used);
     bytes_used += sizeof(int) * minibatch_;
 
-    // cudaMemcpyAsync(trans_acts, trans_acts_cpu, sizeof(ProbT) * minibatch_ * maxT_ * alphabet_size_, cudaMemcpyHostToDevice, stream_);
-    // cudaMemcpyAsync(pred_acts, pred_acts_cpu, sizeof(ProbT) * minibatch_ * maxU_ * alphabet_size_, cudaMemcpyHostToDevice, stream_);
-    // cudaMemcpyAsync(trans_grad, trans_grads_cpu, sizeof(ProbT) * minibatch_ * maxT_ * alphabet_size_, cudaMemcpyHostToDevice, stream_);
-    // cudaMemcpyAsync(pred_grad, pred_grads_cpu, sizeof(ProbT) * minibatch_ * maxU_ * alphabet_size_, cudaMemcpyHostToDevice, stream_);
-    // cudaMemcpyAsync(labels, flat_labels, sizeof(int) * minibatch_ * (maxU_ - 1), cudaMemcpyHostToDevice, stream_);
-    // cudaMemcpyAsync(xlen, input_lengths, sizeof(int) * minibatch_, cudaMemcpyHostToDevice, stream_);
-    // cudaMemcpyAsync(ylen, label_lengths, sizeof(int) * minibatch_, cudaMemcpyHostToDevice, stream_);
+    cudaMemsetAsync(trans_grad, 0, sizeof(ProbT) * minibatch_ * maxT_ * alphabet_size_, stream_);
+    cudaMemsetAsync(pred_grad, 0, sizeof(ProbT) * minibatch_ * maxU_ * alphabet_size_, stream_);
+    cudaMemcpyAsync(trans_acts, trans_acts_cpu, sizeof(ProbT) * minibatch_ * maxT_ * alphabet_size_, cudaMemcpyHostToDevice, stream_);
+    cudaMemcpyAsync(pred_acts, pred_acts_cpu, sizeof(ProbT) * minibatch_ * maxU_ * alphabet_size_, cudaMemcpyHostToDevice, stream_);
+    cudaMemcpyAsync(labels, flat_labels, sizeof(int) * minibatch_ * (maxU_ - 1), cudaMemcpyHostToDevice, stream_);
+    cudaMemcpyAsync(xlen, input_lengths, sizeof(int) * minibatch_, cudaMemcpyHostToDevice, stream_);
+    cudaMemcpyAsync(ylen, label_lengths, sizeof(int) * minibatch_, cudaMemcpyHostToDevice, stream_);
 
     // denom
     auto start = std::chrono::high_resolution_clock::now();
-    // log_softmax(trans_acts, pred_acts, denom);
-    log_softmax(trans_acts_cpu, pred_acts_cpu, denom);
+    log_softmax(trans_acts, pred_acts, denom);
+    // log_softmax(trans_acts_cpu, pred_acts_cpu, denom);
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
-    std::cout << "log_softmax " << elapsed.count() * 1000 << " ms\n";
+    // std::cout << "log_softmax " << elapsed.count() * 1000 << " ms\n";
     // alphas
     start = std::chrono::high_resolution_clock::now();
-    // compute_alphas_kernel<ProbT><<<1, minibatch_, 0, stream_>>>(trans_acts, pred_acts, denom, alphas, llForward, 
-    //     xlen, ylen, labels, minibatch_, maxT_, maxU_, alphabet_size_, blank_);
-    trans_acts = static_cast<ProbT*>(trans_acts_cpu); pred_acts = static_cast<ProbT*>(pred_acts_cpu); 
-    xlen = const_cast<int*>(input_lengths); ylen = const_cast<int*>(label_lengths); labels = const_cast<int*>(flat_labels);
+    compute_alphas_kernel<ProbT><<<1, minibatch_, 0, stream_>>>(trans_acts, pred_acts, denom, alphas, llForward, 
+        xlen, ylen, labels, minibatch_, maxT_, maxU_, alphabet_size_, blank_);
+    // trans_acts = static_cast<ProbT*>(trans_acts_cpu); pred_acts = static_cast<ProbT*>(pred_acts_cpu); 
+    // xlen = const_cast<int*>(input_lengths); ylen = const_cast<int*>(label_lengths); labels = const_cast<int*>(flat_labels);
     // printf("denom\n");
     // for (int mb = 0; mb < minibatch_; ++mb) {
     //     for (int t = 0; t < maxT_; ++t) {
@@ -186,90 +186,98 @@ GpuRNNT<ProbT>::cost_and_grad(ProbT* const trans_acts_cpu,
     //     }
     //     printf("\n");
     // }
-    // printf("alphas\n");
-    // for (int mb = 0; mb < minibatch_; ++mb) {
-    //     for (int t = 0; t < maxT_; ++t) {
-    //         for (int u = 0; u < maxU_; ++u) {
-    //             printf("%f ", alphas[(mb*maxT_+t)*maxU_+u]);
-    //         }
-    //         printf("\n");
-    //     }
-    //     printf("\n");
-    // }
-    // printf("trans_acts\n");
-    // for (int mb = 0; mb < minibatch_; ++mb) {
-    //     for (int t = 0; t < maxT_; ++t) {
-    //         for (int v = 0; v < alphabet_size_; ++v) {
-    //             printf("%f ", trans_acts[(mb * maxT_ + t) * alphabet_size_ + v]);
-    //         }
-    //         printf("\n");
-    //     }
-    //     printf("\n");
-    // }
-    // printf("pred_acts\n");
-    // for (int mb = 0; mb < minibatch_; ++mb) {
-    //     for (int u = 0; u < maxU_; ++u) {
-    //         for (int v = 0; v < alphabet_size_; ++v) {
-    //             printf("%f ", pred_acts[(mb * maxU_ + u) * alphabet_size_ + v]);
-    //         }
-    //         printf("\n");
-    //     }
-    //     printf("\n");
-    // }
-    compute_alphas_cpu(trans_acts, pred_acts, denom, alphas, llForward, 
-        xlen, ylen, labels, minibatch_, maxT_, maxU_, alphabet_size_, blank_);
+
+    // compute_alphas_cpu(trans_acts, pred_acts, denom, alphas, llForward, 
+    //     xlen, ylen, labels, minibatch_, maxT_, maxU_, alphabet_size_, blank_);
     end = std::chrono::high_resolution_clock::now();
     elapsed = end - start;
-    std::cout << "compute_alphas_kernel " << elapsed.count() * 1000 << " ms\n";
+    // std::cout << "compute_alphas_kernel " << elapsed.count() * 1000 << " ms\n";
     // ProbT* alphas_cpu = static_cast<ProbT*>(workspace_);
     // cudaMemcpyAsync(alphas_cpu, alphas, sizeof(ProbT) * minibatch_ * maxT_ * maxU_, cudaMemcpyDeviceToHost, stream_);
     // printf("alphas\n");
+    // // NOTE should use T, U
     // for (int mb = 0; mb < minibatch_; ++mb) {
     //     for (int t = 0; t < maxT_; ++t) {
     //         for (int u = 0; u < maxU_; ++u) {
-    //             printf("%f ", alphas[(mb * maxT_ + t) * maxU_ + u]);
+    //             printf("%f ", alphas_cpu[(mb * maxT_ + t) * maxU_ + u]);
     //         }
     //         printf("\n");
     //     }
     // }
     // betas
     start = std::chrono::high_resolution_clock::now();
-    // compute_betas_kernel<ProbT><<<1, minibatch_, 0, stream_>>>(trans_acts, pred_acts, denom, betas, llBackward,
-    //     xlen, ylen, labels, minibatch_, maxT_, maxU_, alphabet_size_, blank_);
-    compute_betas_cpu(trans_acts, pred_acts, denom, betas, llBackward,
+    compute_betas_kernel<ProbT><<<1, minibatch_, 0, stream_>>>(trans_acts, pred_acts, denom, betas, llBackward,
         xlen, ylen, labels, minibatch_, maxT_, maxU_, alphabet_size_, blank_);
+    // compute_betas_cpu(trans_acts, pred_acts, denom, betas, llBackward,
+    //     xlen, ylen, labels, minibatch_, maxT_, maxU_, alphabet_size_, blank_);
     end = std::chrono::high_resolution_clock::now();
     elapsed = end - start;
-    std::cout << "compute_betas_kernel " << elapsed.count() * 1000 << " ms\n";
+    // std::cout << "compute_betas_kernel " << elapsed.count() * 1000 << " ms\n";
     // ProbT* betas_cpu = static_cast<ProbT*>(workspace_);
     // cudaMemcpyAsync(betas_cpu, betas, sizeof(ProbT) * minibatch_ * maxT_ * maxU_, cudaMemcpyDeviceToHost, stream_);
     // printf("betas\n");
     // for (int mb = 0; mb < minibatch_; ++mb) {
     //     for (int t = 0; t < maxT_; ++t) {
     //         for (int u = 0; u < maxU_; ++u) {
-    //             printf("%f ", betas[(mb * maxT_ + t) * maxU_ + u]);
+    //             printf("%f ", betas_cpu[(mb * maxT_ + t) * maxU_ + u]);
     //         }
     //         printf("\n");
     //     }
     // }
+    cudaStreamSynchronize(stream_);
     // gradient
     start = std::chrono::high_resolution_clock::now();
-    // compute_grad_kernel<128, ProbT><<<minibatch_ * maxT_ * maxU_, 128, 0, stream_>>>(trans_grad, pred_grad, 
-    //     trans_acts, pred_acts, denom, alphas, betas, llForward, xlen, ylen, labels, 
-    //     minibatch_, maxT_, maxU_, alphabet_size_, blank_);
-    compute_grad_cpu<128, ProbT>(trans_grads_cpu, pred_grads_cpu, 
+    // TODO change to 256
+    compute_grad_kernel<128, ProbT><<<minibatch_ * maxT_ * maxU_, 128, 0, stream_>>>(trans_grad, pred_grad, 
         trans_acts, pred_acts, denom, alphas, betas, llForward, xlen, ylen, labels, 
         minibatch_, maxT_, maxU_, alphabet_size_, blank_);
+    // compute_grad_cpu<128, ProbT>(trans_grads_cpu, pred_grads_cpu, 
+    //     trans_acts, pred_acts, denom, alphas, betas, llForward, xlen, ylen, labels, 
+    //     minibatch_, maxT_, maxU_, alphabet_size_, blank_);
+    // ProbT* grad = (ProbT*) malloc(sizeof(ProbT) * minibatch_ * (maxT_+maxU_) * alphabet_size_);
+    // cudaMemcpyAsync(grad, trans_grad, sizeof(ProbT) * minibatch_ * maxT_ * alphabet_size_, cudaMemcpyDeviceToHost, stream_);
+    // cudaStreamSynchronize(stream_);
+    // printf("trans_grad\n");
+    // for (int mb = 0; mb < minibatch_; ++mb) {
+    //     for (int t = 0; t < maxT_; ++t) {
+    //         for (int v = 0; v < alphabet_size_; ++v) {
+    //             printf("%f ", grad[(mb * maxT_ + t) * alphabet_size_ + v]);
+    //         }
+    //         printf("\n");
+    //     }
+    //     printf("\n");
+    // }
+    // cudaMemcpyAsync(grad, pred_grad, sizeof(ProbT) * minibatch_ * maxU_ * alphabet_size_, cudaMemcpyDeviceToHost, stream_);
+    // cudaStreamSynchronize(stream_);
+    // printf("pred_grad\n");
+    // for (int mb = 0; mb < minibatch_; ++mb) {
+    //     for (int u = 0; u < maxU_; ++u) {
+    //         for (int v = 0; v < alphabet_size_; ++v) {
+    //             printf("%f ", grad[(mb * maxU_ + u) * alphabet_size_ + v]);
+    //         }
+    //         printf("\n");
+    //     }
+    //     printf("\n");
+    // }
+    // free(grad);
     end = std::chrono::high_resolution_clock::now();
     elapsed = end - start;
-    std::cout << "compute_grad_kernel " << elapsed.count() * 1000 << " ms\n";
+    // std::cout << "compute_grad_kernel " << elapsed.count() * 1000 << " ms\n";
 
     // cost
-    // cudaMemcpyAsync(costs, llForward, sizeof(ProbT) * minibatch_, cudaMemcpyDeviceToHost, stream_);
-    // cudaMemcpyAsync(trans_grads_cpu, trans_grad, sizeof(ProbT) * minibatch_ * maxT_ * alphabet_size_, cudaMemcpyDeviceToHost, stream_);
-    // cudaMemcpyAsync(pred_grads_cpu, pred_grad, sizeof(ProbT) * minibatch_ * maxU_ * alphabet_size_, cudaMemcpyDeviceToHost, stream_);
-    for (int mb = 0; mb < minibatch_; ++mb) costs[mb] = -llForward[mb];
-    free(gpu_workspace);
+    cudaMemcpyAsync(costs, llForward, sizeof(ProbT) * minibatch_, cudaMemcpyDeviceToHost, stream_);
+    cudaMemcpyAsync(trans_grads_cpu, trans_grad, sizeof(ProbT) * minibatch_ * maxT_ * alphabet_size_, cudaMemcpyDeviceToHost, stream_);
+    cudaMemcpyAsync(pred_grads_cpu, pred_grad, sizeof(ProbT) * minibatch_ * maxU_ * alphabet_size_, cudaMemcpyDeviceToHost, stream_);
+    cudaStreamSynchronize(stream_);
+    // printf("costs\n");
+    for (int mb = 0; mb < minibatch_; ++mb) {
+        costs[mb] = -costs[mb];
+        // printf("%f ", costs[mb]);
+    }
+    // printf("\n");
+    // for (int mb = 0; mb < minibatch_; ++mb) costs[mb] = -llForward[mb];
+    // free(gpu_workspace);
+    cudaFree(gpu_workspace);
     return RNNT_STATUS_SUCCESS;
 }
 
@@ -295,8 +303,8 @@ GpuRNNT<ProbT>::score_forward(ProbT* const trans_acts_cpu,
     bytes *= minibatch_;
 
     void * gpu_workspace;
-    // cudaMalloc(&gpu_workspace, bytes);
-    gpu_workspace = malloc(bytes);
+    cudaMalloc(&gpu_workspace, bytes);
+    // gpu_workspace = malloc(bytes);
     size_t bytes_used = 0;
     // acts
     ProbT* trans_acts = static_cast<ProbT*>(gpu_workspace);
@@ -321,23 +329,29 @@ GpuRNNT<ProbT>::score_forward(ProbT* const trans_acts_cpu,
     int* ylen = static_cast<int*>(gpu_workspace) + bytes_used;
     bytes_used += minibatch_;
 
-    // cudaMemcpyAsync(trans_acts, trans_acts_cpu, sizeof(ProbT) * minibatch_ * maxT_ * alphabet_size_, cudaMemcpyHostToDevice, stream_);
-    // cudaMemcpyAsync(pred_acts, pred_acts_cpu, sizeof(ProbT) * minibatch_ * maxU_ * alphabet_size_, cudaMemcpyHostToDevice, stream_);
-    // cudaMemcpyAsync(labels, flat_labels, sizeof(int) * minibatch_ * (maxU_ - 1), cudaMemcpyHostToDevice, stream_);
-    // cudaMemcpyAsync(xlen, input_lengths, sizeof(int) * minibatch_, cudaMemcpyHostToDevice, stream_);
-    // cudaMemcpyAsync(ylen, label_lengths, sizeof(int) * minibatch_, cudaMemcpyHostToDevice, stream_);
+    cudaMemcpyAsync(trans_acts, trans_acts_cpu, sizeof(ProbT) * minibatch_ * maxT_ * alphabet_size_, cudaMemcpyHostToDevice, stream_);
+    cudaMemcpyAsync(pred_acts, pred_acts_cpu, sizeof(ProbT) * minibatch_ * maxU_ * alphabet_size_, cudaMemcpyHostToDevice, stream_);
+    cudaMemcpyAsync(labels, flat_labels, sizeof(int) * minibatch_ * (maxU_ - 1), cudaMemcpyHostToDevice, stream_);
+    cudaMemcpyAsync(xlen, input_lengths, sizeof(int) * minibatch_, cudaMemcpyHostToDevice, stream_);
+    cudaMemcpyAsync(ylen, label_lengths, sizeof(int) * minibatch_, cudaMemcpyHostToDevice, stream_);
 
-    // log_softmax(trans_acts, pred_acts, denom);
-    // compute_alphas_kernel<ProbT><<<1, minibatch_, 0, stream_>>>(trans_acts, pred_acts, denom, alphas, llForward, 
-    //     xlen, ylen, labels, minibatch_, maxT_, maxU_, alphabet_size_, blank_);
-    // cudaMemcpyAsync(costs, llForward, sizeof(ProbT) * minibatch_, cudaMemcpyDeviceToHost, stream_);
-
-    log_softmax(trans_acts_cpu, pred_acts_cpu, denom);
-    trans_acts = static_cast<ProbT*>(trans_acts_cpu); pred_acts = static_cast<ProbT*>(pred_acts_cpu); 
-    xlen = const_cast<int*>(input_lengths); ylen = const_cast<int*>(label_lengths); labels = const_cast<int*>(flat_labels);
-    compute_alphas_cpu(trans_acts, pred_acts, denom, alphas, llForward, 
+    log_softmax(trans_acts, pred_acts, denom);
+    // log_softmax(trans_acts_cpu, pred_acts_cpu, denom);
+    // alphas
+    compute_alphas_kernel<ProbT><<<1, minibatch_, 0, stream_>>>(trans_acts, pred_acts, denom, alphas, llForward, 
         xlen, ylen, labels, minibatch_, maxT_, maxU_, alphabet_size_, blank_);
-    for (int mb = 0; mb < minibatch_; ++mb) costs[mb] = -llForward[mb];
-    free(gpu_workspace);
+
+    cudaMemcpyAsync(costs, llForward, sizeof(ProbT) * minibatch_, cudaMemcpyDeviceToHost, stream_);
+    cudaStreamSynchronize(stream_);
+    for (int mb = 0; mb < minibatch_; ++mb) costs[mb] = -costs[mb];
+
+    // log_softmax(trans_acts_cpu, pred_acts_cpu, denom);
+    // trans_acts = static_cast<ProbT*>(trans_acts_cpu); pred_acts = static_cast<ProbT*>(pred_acts_cpu); 
+    // xlen = const_cast<int*>(input_lengths); ylen = const_cast<int*>(label_lengths); labels = const_cast<int*>(flat_labels);
+    // compute_alphas_cpu(trans_acts, pred_acts, denom, alphas, llForward, 
+    //     xlen, ylen, labels, minibatch_, maxT_, maxU_, alphabet_size_, blank_);
+    // for (int mb = 0; mb < minibatch_; ++mb) costs[mb] = -llForward[mb];
+    // free(gpu_workspace);
+    cudaFree(gpu_workspace);
     return RNNT_STATUS_SUCCESS;
 }

@@ -67,8 +67,8 @@ __global__ void compute_betas_kernel(const Tp* const trans_acts, const Tp* const
 }
 
 template<int NT, typename Tp>
-__global__ void compute_grad_kernel(Tp* trans_grad, Tp* pred_grad, const Tp* const trans_acts, const Tp* const pred_acts, const Tp* const denom, Tp* alphas, Tp* betas, const Tp* const logll, const int* const xlen, const int* const ylen, 
-    int* labels, const int minibatch, const int maxT, const int maxU, const int alphabet_size, const int blank_) {
+__global__ void compute_grad_kernel(Tp* trans_grad, Tp* pred_grad, const Tp* const trans_acts, const Tp* const pred_acts, const Tp* const denom, const Tp* alphas, const Tp* betas, const Tp* const logll, const int* const xlen, const int* const ylen, 
+    const int* mlabels, const int minibatch, const int maxT, const int maxU, const int alphabet_size, const int blank_) {
     int tid = threadIdx.x; // alphabet dim
     int idx = tid;
     int col = blockIdx.x; // mb, t, u
@@ -80,28 +80,30 @@ __global__ void compute_grad_kernel(Tp* trans_grad, Tp* pred_grad, const Tp* con
 
     const int T = xlen[mb];
     const int U = ylen[mb] + 1;
-    labels += mb * (maxU - 1);
-    const int offset = mb * maxT * maxU;
-    alphas += offset;
-    betas += offset;
-    trans_grad += mb * maxT * alphabet_size;
-    pred_grad += mb * maxU * alphabet_size;
+    const int* labels = mlabels + mb * (maxU - 1);
+    // const int offset = mb * maxT * maxU;
+    // const Tp* alphas = malphas + offset;
+    // const Tp* betas = mbetas + offset;
+    // trans_grad += mb * maxT * alphabet_size;
+    // pred_grad += mb * maxU * alphabet_size;
 
+    if (t < T && u < U) {
+        while (idx < alphabet_size) {
+            Tp logpk = logp(denom, trans_acts, pred_acts, maxT, maxU, alphabet_size, mb, t, u, idx);
+            Tp grad = exp(alphas[col] + betas[col] + logpk - logll[mb]);
+            // grad to last blank transition
+            if (idx == blank_ && t == T-1 && u == U-1) grad -= 1;
+            if (idx == blank_ && t < T-1) {
+                grad -= exp(alphas[col] + logpk - logll[mb] + betas[col + maxU]);
+            }
+            if (idx == labels[u] && u < U-1) {
+                grad -= exp(alphas[col] + logpk - logll[mb] + betas[col+1]);
+            }
+            atomicAdd(&trans_grad[(mb * maxT + t) * alphabet_size + idx], grad);
+            atomicAdd(&pred_grad[(mb * maxU + u) * alphabet_size + idx], grad);
 
-    while (idx < alphabet_size) {
-        Tp logpk = logp(denom, trans_acts, pred_acts, maxT, maxU, alphabet_size, mb, t, u, idx);
-        Tp grad = exp(alphas[t * maxU + u] + betas[t * maxU + u] + logpk - logll[mb]);
-        // grad to last blank transition
-        if (idx == blank_ && t == T-1 && u == U-1) grad -= 1;
-        if (idx == blank_ && t < T-1) {
-            grad -= exp(alphas[t * maxU + u] + logpk - logll[mb] + betas[(t+1) * maxU + u]);
+            idx += NT;
         }
-        if (idx == labels[u] && u < U-1) {
-            grad -= exp(alphas[t * maxU + u] + logpk - logll[mb] + betas[t * maxU + u+1]);
-        }
-        trans_grad[t * alphabet_size + idx] += grad;
-        pred_grad[u * alphabet_size + idx] += grad;
-
-        idx += NT;
     }
+    __syncthreads();
 }

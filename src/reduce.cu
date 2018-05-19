@@ -51,12 +51,12 @@ struct CTAReduce {
 
 // TODO return 
 template <typename T>
-inline __device__ void logp(const T* ft, const T* gu, T& ret, int col, int num_rows, int idx, int maxT, int maxU) {
+inline __device__ T logp(const T* ft, const T* gu, int col, int num_rows, int idx, int maxT, int maxU) {
     int u = col % maxU;
     int bt = (col - u) / maxU;
     int t = bt % maxT;
     int mb = (bt - t) / maxT;
-    ret = ft[(mb * maxT + t) * num_rows + idx] + gu[(mb * maxU + u) * num_rows + idx];
+    return ft[(mb * maxT + t) * num_rows + idx] + gu[(mb * maxU + u) * num_rows + idx];
 }
 
 template <int NT, typename Iop, typename Rop, typename T>
@@ -74,13 +74,13 @@ __global__ void reduce_rows(Iop f, Rop g, const T* ft, const T* gu, T* output,
 
     // Each block works on a column
     if (idx < num_rows) {
-        logp(ft, gu, ret, col, num_rows, idx, maxT, maxU);
+        ret = logp(ft, gu, col, num_rows, idx, maxT, maxU);
         curr = f(ret);
     }
     idx += NT;
 
     while (idx < num_rows) {
-        logp(ft, gu, ret, col, num_rows, idx, maxT, maxU);
+        ret = logp(ft, gu, col, num_rows, idx, maxT, maxU);
         curr = g(curr, f(ret));
         idx += NT;
     }
@@ -109,13 +109,13 @@ __global__ void reduce_minus(Iop f, Rop g, const T* ft, const T* gu, T* output,
 
     // Each block works on a column
     if (idx < num_rows) {
-        logp(ft, gu, ret, col, num_rows, idx, maxT, maxU);
+        ret = logp(ft, gu, col, num_rows, idx, maxT, maxU);
         curr = f(ret - max);
     }
     idx += NT;
 
     while (idx < num_rows) {
-        logp(ft, gu, ret, col, num_rows, idx, maxT, maxU);
+        ret = logp(ft, gu, col, num_rows, idx, maxT, maxU);
         curr = g(curr, f(ret - max));
         idx += NT;
     }

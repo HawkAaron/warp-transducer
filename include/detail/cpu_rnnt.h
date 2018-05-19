@@ -270,10 +270,7 @@ CpuRNNT<ProbT>::compute_alphas(CpuRNNT_logProbs& logp, int T, int U,
 
     CpuRNNT_index& idx = logp.idx;
     alphas[0] = 0;
-    printf("labels\n");
-    for (int i=0;i<U-1;i++)  printf("%d ", labels[i]);
-    printf("\n");
-    printf("alphas\n");
+    // printf("alphas\n");
     for (int t = 0; t < T; ++t) {
         for (int u = 0; u < U; ++u) {
             if (u == 0 && t > 0) 
@@ -285,10 +282,9 @@ CpuRNNT<ProbT>::compute_alphas(CpuRNNT_logProbs& logp, int T, int U,
                 ProbT emit = alphas[idx(t, u-1)] + logp(t, u-1, labels[u-1]);
                 alphas[idx(t, u)] = log_sum_exp<ProbT>(emit, no_emit);
             }
-            if (u > 0) printf("%d ", labels[u-1]);
             // printf("%f ", alphas[idx(t, u)]);
         }
-        printf("\n");
+        // printf("\n");
     }
 
     ProbT loglike = alphas[idx(T-1, U-1)] + logp(T-1, U-1, blank_);
@@ -311,7 +307,7 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* trans_grad, ProbT* pred_grad,
 
     betas[idx(T-1, U-1)] = logp(T-1, U-1, blank_);
 
-    printf("betas\n");
+    // printf("betas\n");
     for (int t = T-1; t >= 0; --t) {
         int t_offset = t * alphabet_size_;
         for (int u = U-1; u >= 0; --u) {
@@ -325,8 +321,6 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* trans_grad, ProbT* pred_grad,
                 ProbT emit = betas[idx(t, u+1)] + logp(t, u, labels[u]);
                 betas[idx(t, u)] = log_sum_exp<ProbT>(emit, no_emit);
             }
-            if (u<U-1) printf("%d ", labels[u]);
-            // printf("%f ", betas[idx(t, u)]);
             // grad
             for (int v = 0; v < alphabet_size_; ++v) {
                 ProbT lgpk = logp(t, u, v);
@@ -343,7 +337,6 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* trans_grad, ProbT* pred_grad,
                 pred_grad[u_offset + v] += grad;
             }
         }
-        printf("\n");
     }
 
     return betas[0];
@@ -384,6 +377,56 @@ CpuRNNT<ProbT>::cost_and_grad(ProbT* const trans_acts,
                              flat_labels + std::accumulate(label_lengths, label_lengths + mb, 0),
                              T, U, bytes_used + mb * per_minibatch_bytes);
     }
+
+    // printf("alphas\n");
+    // for (int mb = 0; mb < minibatch_; ++mb) {
+    //     const int T = input_lengths[mb];
+    //     const int U = label_lengths[mb] + 1;
+    //     ProbT* alphas = reinterpret_cast<ProbT *>(static_cast<char *>(workspace_) + bytes_used + mb * per_minibatch_bytes);
+    //     for (int t = 0; t < T; ++t) {
+    //         for (int u = 0; u < U; ++u) {
+    //             printf("%f ", alphas[t * U + u]);
+    //         }
+    //         printf("\n");
+    //     }
+    // }
+    // printf("betas\n");
+    // for (int mb = 0; mb < minibatch_; ++mb) {
+    //     const int T = input_lengths[mb];
+    //     const int U = label_lengths[mb] + 1;
+    //     ProbT* betas = reinterpret_cast<ProbT *>(static_cast<char *>(workspace_) + bytes_used + mb * per_minibatch_bytes + sizeof(ProbT) * T * U);
+    //     for (int t = 0; t < T; ++t) {
+    //         for (int u = 0; u < U; ++u) {
+    //             printf("%f ", betas[t * U + u]);
+    //         }
+    //         printf("\n");
+    //     }
+    // }
+    // printf("trans_grad\n");
+    // for (int mb = 0; mb < minibatch_; ++mb) {
+    //     for (int t = 0; t < maxT_; ++t) {
+    //         for (int v = 0; v < alphabet_size_; ++v) {
+    //             printf("%f ", trans_grads[(mb * maxT_ + t) * alphabet_size_ + v]);
+    //         }
+    //         printf("\n");
+    //     }
+    //     printf("\n");
+    // }
+    // printf("pred_grad\n");
+    // for (int mb = 0; mb < minibatch_; ++mb) {
+    //     for (int u = 0; u < maxU_; ++u) {
+    //         for (int v = 0; v < alphabet_size_; ++v) {
+    //             printf("%f ", pred_grads[(mb * maxU_ + u) * alphabet_size_ + v]);
+    //         }
+    //         printf("\n");
+    //     }
+    //     printf("\n");
+    // }
+    // printf("costs\n");
+    // for (int mb = 0; mb < minibatch_; ++mb) {
+    //     printf("%f ", costs[mb]);
+    // }
+    // printf("\n");
 
     return RNNT_STATUS_SUCCESS;
 }

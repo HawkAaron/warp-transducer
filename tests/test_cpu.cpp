@@ -403,14 +403,14 @@ int main(void) {
     std::cout << "Running CPU tests" << std::endl;
 
     bool status = true;
-    // status &= small_test();
-    // printf("finish small_test %d\n", status);
+    status &= small_test();
+    printf("finish small_test %d\n", status);
     status &= options_test();
     printf("finish options_test %d\n", status);
-    // status &= inf_test();
-    // printf("finish inf_test %d\n", status);
-    // status &= run_tests();
-    // printf("finished %d\n", status);
+    status &= inf_test();
+    printf("finish inf_test %d\n", status);
+    status &= run_tests();
+    printf("finished %d\n", status);
 
     if (status) {
         std::cout << "Tests pass" << std::endl;

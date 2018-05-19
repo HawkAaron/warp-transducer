@@ -35,8 +35,12 @@ bool small_test() {
     rnntOptions options{};
     options.maxT = T;
     options.maxU = U;
-    options.loc = RNNT_CPU;
+    options.loc = RNNT_GPU;
     options.num_threads = 1;
+    cudaStream_t stream;
+    cudaStreamCreate(&stream);
+    options.stream = stream;
+
 
     size_t cpu_alloc_bytes;
     throw_on_error(get_workspace_size(T, U, B, alphabet_size,
@@ -121,9 +125,12 @@ bool options_test() {
     rnntOptions options{};
     options.maxT = T;
     options.maxU = L;
-    options.loc = RNNT_CPU;
+    options.loc = RNNT_GPU;
     options.num_threads = 1;
     options.blank_label = 5;
+    cudaStream_t stream;
+    cudaStreamCreate(&stream);
+    options.stream = stream;
 
     size_t cpu_alloc_bytes;
     throw_on_error(get_workspace_size(T, L, minibatch,
@@ -218,8 +225,11 @@ bool inf_test() {
     rnntOptions options{};
     options.maxT = T;
     options.maxU = L;
-    options.loc = RNNT_CPU;
+    options.loc = RNNT_GPU;
     options.num_threads = 1;
+    cudaStream_t stream;
+    cudaStreamCreate(&stream);
+    options.stream = stream;
 
     size_t cpu_alloc_bytes;
     throw_on_error(get_workspace_size(T, L, minibatch,
@@ -253,7 +263,7 @@ bool inf_test() {
     return status;
 }
 
-float numeric_grad(std::vector<float>& acts, std::vector<float>& trans_acts, std::vector<float>& pred_acts,
+void numeric_grad(std::vector<float>& acts, std::vector<float>& trans_acts, std::vector<float>& pred_acts,
                 std::vector<int>& flat_labels, std::vector<int>& label_lengths,
                 std::vector<int> sizes, int alphabet_size, int minibatch, 
                 void* rnnt_cpu_workspace, rnntOptions& options, std::vector<float>& num_grad) {
@@ -320,8 +330,11 @@ bool grad_check(int T, int L, int alphabet_size,
     rnntOptions options{};
     options.maxT = T;
     options.maxU = L;
-    options.loc = RNNT_CPU;
+    options.loc = RNNT_GPU;
     options.num_threads = 1;
+    cudaStream_t stream;
+    cudaStreamCreate(&stream);
+    options.stream = stream;
 
     size_t cpu_alloc_bytes;
     throw_on_error(get_workspace_size(T, L, sizes.size(),
@@ -403,14 +416,14 @@ int main(void) {
     std::cout << "Running CPU tests" << std::endl;
 
     bool status = true;
-    // status &= small_test();
-    // printf("finish small_test %d\n", status);
+    status &= small_test();
+    printf("finish small_test %d\n", status);
     status &= options_test();
     printf("finish options_test %d\n", status);
-    // status &= inf_test();
-    // printf("finish inf_test %d\n", status);
-    // status &= run_tests();
-    // printf("finished %d\n", status);
+    status &= inf_test();
+    printf("finish inf_test %d\n", status);
+    status &= run_tests();
+    printf("finished %d\n", status);
 
     if (status) {
         std::cout << "Tests pass" << std::endl;

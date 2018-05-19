@@ -4,7 +4,15 @@
 #include <numeric>
 
 #include "rnnt.h"
-#include "TH.h"
+
+#ifdef WARPRNNT_ENABLE_GPU
+    #include "THC.h"
+    #include "THCTensor.h"
+    #include "detail/reduce.h"
+    extern THCState* state;
+#else
+    #include "TH.h"
+#endif
 
 extern "C" int cpu_rnnt(THFloatTensor *trans_acts,
                         THFloatTensor *pred_acts,
@@ -42,7 +50,8 @@ extern "C" int cpu_rnnt(THFloatTensor *trans_acts,
     options.maxT = maxT;
     options.maxU = maxU;
     options.blank_label = blank_label;
-    options.loc = RNNT_CPU;
+    options.loc = RNNT_GPU;
+    options.stream = THCState_getCurrentStream(state);
     options.num_threads = num_threads;
 #if defined(RNNT_DISABLE_OMP) || defined(APPLE)
     // have to use at least one

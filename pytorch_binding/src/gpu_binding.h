@@ -1,0 +1,10 @@
+int gpu_rnnt(THCudaTensor *trans_acts,
+                THCudaTensor *pred_acts,
+                THIntTensor *labels,
+                THIntTensor *input_lengths,
+                THIntTensor *label_lengths,
+                THFloatTensor *costs,
+                THFloatTensor *trans_grad,
+                THFloatTensor *pred_grad,
+                int blank_label,
+                int num_threads);

@@ -1,5 +1,5 @@
 # warp-transducer
-A fast parallel implementation of RNN Transducer.
+A fast parallel implementation of RNN Transducer, on both CPU and GPU.
 
 ## Installation
 
@@ -13,7 +13,7 @@ new warp-rnnt clone you could build WarpRNNT like this:
 git clone https://github.com/HawkAaron/warp-transducer
 cd warp-transducer
 mkdir build; cd build
-cmake -D WITH_GPU=OFF ..
+cmake ..
 make
 ```
 
@@ -48,4 +48,3 @@ This will resolve the library not loaded error. This can be easily modified to w
 
 ## TODO
 * Performance test
-* GPU implementation

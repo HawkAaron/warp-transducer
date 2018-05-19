@@ -49,31 +49,46 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
     options.maxU = L + 1;
     options.blank_label = 0;
     options.loc = RNNT_GPU;
-    options.num_threads = num_threads;
     cudaStream_t stream;
     cudaStreamCreate(&stream);
     options.stream = stream;
 
-    size_t cpu_alloc_bytes;
+    float* trans_acts_gpu;
+    float* pred_acts_gpu;
+    cudaMalloc(&trans_acts_gpu, trans_len * sizeof(float));
+    cudaMalloc(&pred_acts_gpu, pred_len * sizeof(float));
+    cudaMemcpyAsync(trans_acts_gpu, trans_acts, trans_len * sizeof(float), cudaMemcpyHostToDevice, stream);
+    cudaMemcpyAsync(pred_acts_gpu, pred_acts, pred_len * sizeof(float), cudaMemcpyHostToDevice, stream);
+
+    float* trans_grads_gpu;
+    float* pred_grads_gpu;
+    cudaMalloc(&trans_grads_gpu, trans_len * sizeof(float));
+    cudaMalloc(&pred_grads_gpu, pred_len * sizeof(float));
+
+
+    size_t gpu_alloc_bytes;
     throw_on_error(get_workspace_size(T, L+1, B, A,
-                                     false,
-                                     &cpu_alloc_bytes),
+                                     true,
+                                     &gpu_alloc_bytes),
                     "Error: get_workspace_size in run_test");
     
-    void* rnnt_cpu_workspace = malloc(cpu_alloc_bytes);
+    void* rnnt_gpu_workspace;
 
     // average time
     std::vector<float> time;
     for (int i = 0; i < 10; ++i) {
         start = std::chrono::high_resolution_clock::now();
-        throw_on_error(compute_rnnt_loss(trans_acts, pred_acts, trans_grads, pred_grads,
+        cudaMalloc(&rnnt_gpu_workspace, gpu_alloc_bytes);
+        throw_on_error(compute_rnnt_loss(trans_acts_gpu, pred_acts_gpu, 
+                                        trans_grads_gpu, pred_grads_gpu,
                                         flat_labels.data(), label_lengths.data(),
                                         sizes.data(),
                                         A, B,
                                         costs.data(),
-                                        rnnt_cpu_workspace,
+                                        rnnt_gpu_workspace,
                                         options),
                         "Error: compute_rnnt_loss (0) in run_test");
+        cudaFree(rnnt_gpu_workspace);
         end = std::chrono::high_resolution_clock::now();
 
         elapsed = end - start;
@@ -88,8 +103,10 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
     std::cout << "average 10 time cost: " << sum / time.size() << " ms\n";
 
     float cost = std::accumulate(costs.begin(), costs.end(), 0.);
-
-    free(rnnt_cpu_workspace);
+    cudaFree(trans_acts_gpu);
+    cudaFree(pred_acts_gpu);
+    cudaFree(trans_grads_gpu);
+    cudaFree(pred_grads_gpu);
 }
 
 int main(int argc, char** argv) {

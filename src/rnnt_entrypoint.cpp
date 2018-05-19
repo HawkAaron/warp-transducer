@@ -125,7 +125,12 @@ rnntStatus_t get_workspace_size(int maxT, int maxU,
     per_minibatch_bytes += sizeof(float) * maxT * maxU;
 
     if (gpu) {
-
+        // forward-backward loglikelihood
+        per_minibatch_bytes += sizeof(float) * 2;
+        // labels
+        per_minibatch_bytes += sizeof(int) * (maxU - 1);
+        // length
+        per_minibatch_bytes += sizeof(int) * 2;
     }
 
     *size_bytes = per_minibatch_bytes * minibatch;

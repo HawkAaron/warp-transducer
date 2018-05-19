@@ -13,7 +13,7 @@ class _RNNT(Function):
     def forward(ctx, trans_acts, pred_acts, labels, act_lens, label_lens,
                     size_average, blank_label):
         is_cuda = True if trans_acts.is_cuda else False
-        if len(labels.shape) > 1:
+        if not is_cuda and len(labels.shape) > 1:
             labels = torch.cat([labels[i, :j] for i, j in enumerate(label_lens)])
         trans_acts = trans_acts.contiguous()
         pred_acts = pred_acts.contiguous()
@@ -25,7 +25,7 @@ class _RNNT(Function):
             trans_grads = trans_grads.cuda()
             pred_grads = pred_grads.cuda()
 
-        minibatch_size = trans_acts.size(1)
+        minibatch_size = trans_acts.size(0)
         costs = torch.zeros(minibatch_size).cpu()
         loss_func(trans_acts, pred_acts,
                   labels.int().cpu(),

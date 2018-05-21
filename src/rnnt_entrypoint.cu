@@ -63,7 +63,7 @@ rnntStatus_t compute_rnnt_loss(float* const trans_acts, // BTV
 
     if (options.loc == RNNT_CPU) {
         CpuRNNT<float> rnnt(minibatch, options.maxT, options.maxU, alphabet_size, workspace, 
-                                options.blank_label, options.num_threads, options.stream);
+                                options.blank_label, options.num_threads);
 
         if (trans_grad != NULL && pred_grad != NULL)
             return rnnt.cost_and_grad(trans_acts, pred_acts,

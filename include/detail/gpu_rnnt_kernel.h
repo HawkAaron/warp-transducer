@@ -81,11 +81,6 @@ __global__ void compute_grad_kernel(Tp* trans_grad, Tp* pred_grad, const Tp* con
     const int T = xlen[mb];
     const int U = ylen[mb] + 1;
     const int* labels = mlabels + mb * (maxU - 1);
-    // const int offset = mb * maxT * maxU;
-    // const Tp* alphas = malphas + offset;
-    // const Tp* betas = mbetas + offset;
-    // trans_grad += mb * maxT * alphabet_size;
-    // pred_grad += mb * maxU * alphabet_size;
 
     if (t < T && u < U) {
         while (idx < alphabet_size) {

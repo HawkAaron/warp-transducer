@@ -31,10 +31,9 @@ template<typename ProbT>
 class CpuRNNT {
 public:
     // Noncopyable
-    CpuRNNT(int minibatch, int maxT, int maxU, int alphabet_size, void* workspace, 
-            int blank, int num_threads, CUstream stream) :
+    CpuRNNT(int minibatch, int maxT, int maxU, int alphabet_size, void* workspace, int blank, int num_threads) :
         minibatch_(minibatch), maxT_(maxT), maxU_(maxU), alphabet_size_(alphabet_size), 
-        workspace_(workspace), blank_(blank), num_threads_(num_threads), stream_(stream) {
+        workspace_(workspace), blank_(blank), num_threads_(num_threads) {
 #if defined(RNNT_DISABLE_OMP) || defined(APPLE)
 #else
         if (num_threads > 0) {
@@ -49,7 +48,6 @@ public:
     CpuRNNT& operator=(const CpuRNNT&) = delete;
 
     void log_softmax(const ProbT* const trans_acts, const ProbT* const pred_acts, ProbT* denom);
-    void log_softmax_cpu(const ProbT* const trans_acts, const ProbT* const pred_acts, ProbT* denom);
 
     rnntStatus_t cost_and_grad(ProbT* const trans_acts,
                               ProbT* const pred_acts,
@@ -108,7 +106,6 @@ private:
     void* workspace_;
     int blank_;
     int num_threads_;
-    CUstream stream_;
     
     ProbT cost_and_grad_kernel(ProbT* const trans_acts, ProbT* const pred_acts,
                                ProbT* const denom,
@@ -158,7 +155,7 @@ CpuRNNT<ProbT>::CpuRNNT_logProbs::CpuRNNT_logProbs(ProbT* const trans_acts,
 
 template<typename ProbT>
 void
-CpuRNNT<ProbT>::log_softmax_cpu(const ProbT* const trans_acts, const ProbT* const pred_acts, ProbT* denom) {
+CpuRNNT<ProbT>::log_softmax(const ProbT* const trans_acts, const ProbT* const pred_acts, ProbT* denom) {
 
 #pragma omp parallel for
     for (int mb = 0; mb < minibatch_; ++mb) {
@@ -184,45 +181,8 @@ CpuRNNT<ProbT>::log_softmax_cpu(const ProbT* const trans_acts, const ProbT* cons
 }
 
 template<typename ProbT>
-void
-CpuRNNT<ProbT>::log_softmax(const ProbT* const trans_acts, const ProbT* const pred_acts, ProbT* denom_cpu) {
-
-    auto start = std::chrono::high_resolution_clock::now();
-    // trans_acts + pred_acts -> log_softmax denominator
-    size_t gpu_size_bytes = (maxT_ + maxU_) * alphabet_size_ * 2 + maxT_ * maxU_;
-    gpu_size_bytes *= sizeof(ProbT) * minibatch_;
-    void* gpu_workspace;
-    cudaStream_t stream;
-    cudaStreamCreate(&stream);
-    cudaMalloc(&gpu_workspace, gpu_size_bytes); // move to outside
-    size_t gpu_bytes_used = 0;
-    ProbT* ft = reinterpret_cast<ProbT*>(static_cast<char*>(gpu_workspace));
-    gpu_bytes_used += sizeof(ProbT) * minibatch_ * maxT_ * alphabet_size_;
-    ProbT* gu = reinterpret_cast<ProbT*>(static_cast<char*>(gpu_workspace) + gpu_bytes_used);
-    gpu_bytes_used += sizeof(ProbT) * minibatch_ * maxU_ * alphabet_size_;
-    ProbT* denom = reinterpret_cast<ProbT*>(static_cast<char*>(gpu_workspace) + gpu_bytes_used);
-    cudaMemcpyAsync(ft, trans_acts, sizeof(ProbT) * minibatch_ * maxT_ * alphabet_size_, cudaMemcpyHostToDevice, stream);
-    cudaMemcpyAsync(gu, pred_acts, sizeof(ProbT) * minibatch_ * maxU_ * alphabet_size_, cudaMemcpyHostToDevice, stream);
-    reduce_max(ft, gu, denom, alphabet_size_, minibatch_ * maxT_ * maxU_, maxT_, maxU_, 0, stream);
-    reduce_exp(ft, gu, denom, alphabet_size_, minibatch_ * maxT_ * maxU_, maxT_, maxU_, 1, stream);
-    cudaMemcpyAsync(denom_cpu, denom, sizeof(ProbT) * minibatch_ * maxT_ * maxU_, cudaMemcpyDeviceToHost, stream);
-    cudaFree(gpu_workspace);
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = end - start;
-    // std::cout << "log_softmax GPU " << elapsed.count() * 1000 << " ms\n";
-
-    // start = std::chrono::high_resolution_clock::now();
-    // log_softmax_cpu(trans_acts, pred_acts, denom_cpu);
-    // end = std::chrono::high_resolution_clock::now();
-    // elapsed = end - start;
-    // std::cout << "log_softmax CPU " << elapsed.count() * 1000 << " ms\n";
-}
-
-template<typename ProbT>
 inline ProbT CpuRNNT<ProbT>::CpuRNNT_logProbs::operator()(int t, int u, int v) {
-    ProbT ret = denom[idx(t, u)] + trans_acts[t * idx.alphabet_size + v] + pred_acts[u * idx.alphabet_size + v];
-    // printf("%f ", ret);
-    return ret;
+    return denom[idx(t, u)] + trans_acts[t * idx.alphabet_size + v] + pred_acts[u * idx.alphabet_size + v];
 }
 
 template<typename ProbT>
@@ -238,22 +198,22 @@ CpuRNNT<ProbT>::cost_and_grad_kernel(ProbT* const trans_acts, ProbT* const pred_
     CpuRNNT_index idx(U, maxU_, minibatch_, alphabet_size_);
     CpuRNNT_logProbs logp(trans_acts, pred_acts, denom, idx, this);
 
-    auto start = std::chrono::high_resolution_clock::now();
+    // auto start = std::chrono::high_resolution_clock::now();
     ProbT llForward = compute_alphas(logp, T, U, rnntm.alphas, labels);
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = end - start;
-    std::cout << "compute_alphas " << elapsed.count() * 1000 << " ms\n";
+    // auto end = std::chrono::high_resolution_clock::now();
+    // std::chrono::duration<double> elapsed = end - start;
+    // std::cout << "compute_alphas " << elapsed.count() * 1000 << " ms\n";
 
-    start = std::chrono::high_resolution_clock::now();
+    // start = std::chrono::high_resolution_clock::now();
     ProbT llBackward = compute_betas_and_grad(trans_grad, pred_grad, 
                                               logp, T, U,
                                               rnntm.alphas, 
                                               rnntm.betas,
                                               labels,
                                               llForward);
-    end = std::chrono::high_resolution_clock::now();
-    elapsed = end - start;
-    std::cout << "compute_betas_and_grad " << elapsed.count() * 1000 << " ms\n";
+    // end = std::chrono::high_resolution_clock::now();
+    // elapsed = end - start;
+    // std::cout << "compute_betas_and_grad " << elapsed.count() * 1000 << " ms\n";
 
     ProbT diff = std::abs(llForward - llBackward);
     if (diff > 1e-1) {
@@ -270,7 +230,6 @@ CpuRNNT<ProbT>::compute_alphas(CpuRNNT_logProbs& logp, int T, int U,
 
     CpuRNNT_index& idx = logp.idx;
     alphas[0] = 0;
-    // printf("alphas\n");
     for (int t = 0; t < T; ++t) {
         for (int u = 0; u < U; ++u) {
             if (u == 0 && t > 0) 
@@ -282,9 +241,7 @@ CpuRNNT<ProbT>::compute_alphas(CpuRNNT_logProbs& logp, int T, int U,
                 ProbT emit = alphas[idx(t, u-1)] + logp(t, u-1, labels[u-1]);
                 alphas[idx(t, u)] = log_sum_exp<ProbT>(emit, no_emit);
             }
-            // printf("%f ", alphas[idx(t, u)]);
         }
-        // printf("\n");
     }
 
     ProbT loglike = alphas[idx(T-1, U-1)] + logp(T-1, U-1, blank_);
@@ -307,7 +264,6 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* trans_grad, ProbT* pred_grad,
 
     betas[idx(T-1, U-1)] = logp(T-1, U-1, blank_);
 
-    // printf("betas\n");
     for (int t = T-1; t >= 0; --t) {
         int t_offset = t * alphabet_size_;
         for (int u = U-1; u >= 0; --u) {
@@ -377,56 +333,6 @@ CpuRNNT<ProbT>::cost_and_grad(ProbT* const trans_acts,
                              flat_labels + std::accumulate(label_lengths, label_lengths + mb, 0),
                              T, U, bytes_used + mb * per_minibatch_bytes);
     }
-
-    // printf("alphas\n");
-    // for (int mb = 0; mb < minibatch_; ++mb) {
-    //     const int T = input_lengths[mb];
-    //     const int U = label_lengths[mb] + 1;
-    //     ProbT* alphas = reinterpret_cast<ProbT *>(static_cast<char *>(workspace_) + bytes_used + mb * per_minibatch_bytes);
-    //     for (int t = 0; t < T; ++t) {
-    //         for (int u = 0; u < U; ++u) {
-    //             printf("%f ", alphas[t * U + u]);
-    //         }
-    //         printf("\n");
-    //     }
-    // }
-    // printf("betas\n");
-    // for (int mb = 0; mb < minibatch_; ++mb) {
-    //     const int T = input_lengths[mb];
-    //     const int U = label_lengths[mb] + 1;
-    //     ProbT* betas = reinterpret_cast<ProbT *>(static_cast<char *>(workspace_) + bytes_used + mb * per_minibatch_bytes + sizeof(ProbT) * T * U);
-    //     for (int t = 0; t < T; ++t) {
-    //         for (int u = 0; u < U; ++u) {
-    //             printf("%f ", betas[t * U + u]);
-    //         }
-    //         printf("\n");
-    //     }
-    // }
-    // printf("trans_grad\n");
-    // for (int mb = 0; mb < minibatch_; ++mb) {
-    //     for (int t = 0; t < maxT_; ++t) {
-    //         for (int v = 0; v < alphabet_size_; ++v) {
-    //             printf("%f ", trans_grads[(mb * maxT_ + t) * alphabet_size_ + v]);
-    //         }
-    //         printf("\n");
-    //     }
-    //     printf("\n");
-    // }
-    // printf("pred_grad\n");
-    // for (int mb = 0; mb < minibatch_; ++mb) {
-    //     for (int u = 0; u < maxU_; ++u) {
-    //         for (int v = 0; v < alphabet_size_; ++v) {
-    //             printf("%f ", pred_grads[(mb * maxU_ + u) * alphabet_size_ + v]);
-    //         }
-    //         printf("\n");
-    //     }
-    //     printf("\n");
-    // }
-    // printf("costs\n");
-    // for (int mb = 0; mb < minibatch_; ++mb) {
-    //     printf("%f ", costs[mb]);
-    // }
-    // printf("\n");
 
     return RNNT_STATUS_SUCCESS;
 }

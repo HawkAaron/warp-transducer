@@ -107,6 +107,8 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
     cudaFree(pred_acts_gpu);
     cudaFree(trans_grads_gpu);
     cudaFree(pred_grads_gpu);
+
+    return true;
 }
 
 int main(int argc, char** argv) {
@@ -133,4 +135,6 @@ int main(int argc, char** argv) {
     }
 
     run_test(B, T, L, A, num_threads);
+
+    return 0;
 }

@@ -1,5 +1,6 @@
 # warp-transducer
 A fast parallel implementation of RNN Transducer (Graves 2013 joint network).
+
 [GPU version is now available for Graves2012 add network !](https://github.com/HawkAaron/warp-transducer/tree/add_network)
 
 ## Installation

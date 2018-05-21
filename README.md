@@ -1,5 +1,6 @@
 # warp-transducer
-A fast parallel implementation of RNN Transducer.
+A fast parallel implementation of RNN Transducer (Graves 2013 joint network).
+[GPU version is now available for Graves2012 add network !](https://github.com/HawkAaron/warp-transducer/tree/add_network)
 
 ## Installation
 
@@ -43,9 +44,7 @@ This will resolve the library not loaded error. This can be easily modified to w
 
 ## Reference
 * [Sequence Transduction with Recurrent Neural Networks](https://arxiv.org/abs/1211.3711)
+* [SPEECH RECOGNITION WITH DEEP RECURRENT NEURAL NETWORKS](https://arxiv.org/pdf/1303.5778.pdf)
 * [Baidu warp-ctc](https://github.com/baidu-research/warp-ctc)
 * [Awni implementation of transducer](https://github.com/awni/transducer)
 
-## TODO
-* Performance test
-* GPU implementation

@@ -39,8 +39,6 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
 
     std::vector<float> costs(B);
 
-    float * grads = new float[len];
-
     rnntOptions options{};
     options.maxT = T;
     options.maxU = L + 1;
@@ -54,11 +52,12 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
                                      false,
                                      &cpu_alloc_bytes),
                     "Error: get_workspace_size in run_test");
-    
-    void* rnnt_cpu_workspace = malloc(cpu_alloc_bytes);
 
     std::vector<float> time;
     for (int i = 0; i < 10; ++i) {
+        float * grads = new float[len];
+        void* rnnt_cpu_workspace = malloc(cpu_alloc_bytes);
+
         start = std::chrono::high_resolution_clock::now();
         throw_on_error(compute_rnnt_loss(acts, grads,
                                         flat_labels.data(), label_lengths.data(),
@@ -70,6 +69,8 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
                         "Error: compute_rnnt_loss (0) in run_test");
         end = std::chrono::high_resolution_clock::now();
 
+        free(grads);
+        free(rnnt_cpu_workspace);
         elapsed = end - start;
         time.push_back(elapsed.count() * 1000);
         std::cout << "compute_rnnt_loss elapsed time: " << elapsed.count() * 1000 << " ms\n";
@@ -79,11 +80,19 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
     for (int i = 0; i < 10; ++i) {
         sum += time[i];
     }
-    std::cout << "average 10 time cost: " << sum / time.size() << " ms\n";
+    sum /= time.size();
+
+    float std = 0;
+    for (int i = 0; i < 10; ++i) {
+        std += (time[i] - sum) * (time[i] - sum);
+    }
+    std /= time.size();
+
+    std::cout << "average 10 time cost: " << sum << " ms variance: " << std << std::endl;
 
     float cost = std::accumulate(costs.begin(), costs.end(), 0.);
 
-    free(rnnt_cpu_workspace);
+    free(acts);
 }
 
 int main(int argc, char** argv) {

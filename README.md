@@ -1,6 +1,41 @@
 # warp-transducer
 A fast parallel implementation of RNN Transducer, on both CPU and GPU.
 
+## GPU Performance
+Benchmarked on a GeForce GTX 1080 Ti GPU.
+
+| **T=150, L=40, A=28** | **warp-transducer** |
+| --------------------- | ------------------- |
+|         N=1           |      8.98 ms        |
+|         N=16          |      12.01 ms       |
+|         N=32          |      14.96 ms       |
+|         N=64          |      16.49 ms       |
+|         N=128         |      20.84 ms       |
+
+| **T=150, L=20, A=5000** | **warp-transducer** |
+| ----------------------- | ------------------- |
+|         N=1             |      6.51 ms        |
+|         N=16            |      28.76 ms       |
+|         N=32            |      44.22 ms       |
+|         N=64            |      81.08 ms       |
+|         N=128           |      165.41 ms      |
+
+| **T=1500, L=300, A=50** | **warp-transducer** |
+| ----------------------- | ------------------- |
+|         N=1             |      508.84 ms      |
+|         N=16            |      838.36 ms      |
+|         N=32            |      1075.39 ms     |
+|         N=64            |      1579.13 ms     |
+|         N=128           |      2298.22 ms     |
+
+| **T=320, L=80, A=30000** | **warp-transducer** |
+| ------------------------ | ------------------- |
+|         N=1              |      96.36 ms       |
+|         N=16             |      1049.82 ms     |
+|         N=32             |      2061.54 ms     |
+|         N=64             |      4082.06 ms     |
+|         N=128            |      -              |
+
 ## Installation
 
 Install [PyTorch](https://github.com/pytorch/pytorch#installation).
@@ -46,5 +81,3 @@ This will resolve the library not loaded error. This can be easily modified to w
 * [Baidu warp-ctc](https://github.com/baidu-research/warp-ctc)
 * [Awni implementation of transducer](https://github.com/awni/transducer)
 
-## TODO
-* Performance test

@@ -66,9 +66,9 @@ def small_test():
 
     assert np.allclose(loss.data.numpy(), expected_cost), \
         "costs mismath."
-    assert np.allclose(trans_acts.grad.data.numpy(), expected_trans_grads), \
+    assert np.allclose(trans_acts.grad.data.numpy(), expected_trans_grads, rtol=1e-4), \
         "trans gradient mismatch."
-    assert np.allclose(pred_acts.grad.data.numpy(), expected_pred_grads), \
+    assert np.allclose(pred_acts.grad.data.numpy(), expected_pred_grads, rtol=1e-4), \
         "pred gradient mismathc."
 
 def show(act):

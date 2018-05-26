@@ -282,7 +282,7 @@ CpuRNNT<ProbT>::cost_and_grad(ProbT* const log_probs,
 
         costs[mb] = cost_and_grad_kernel(log_probs + mb * batch_size,
                              grads + mb * batch_size,
-                             flat_labels + std::accumulate(label_lengths, label_lengths + mb, 0),
+                             flat_labels + mb * (maxU_ - 1),
                              mb, T, U, mb * per_minibatch_bytes);
     }
 
@@ -315,7 +315,7 @@ CpuRNNT<ProbT>::score_forward(ProbT* const log_probs,
 
         CpuRNNT_index idx(U, maxU_, minibatch_, alphabet_size_, batch_first);
         CpuRNNT_metadata rnntm(T, U, workspace_, mb * per_minibatch_bytes, blank_, 
-            flat_labels + std::accumulate(label_lengths, label_lengths + mb, 0), log_probs + mb * batch_size, idx);
+            flat_labels + mb * (maxU_ - 1), log_probs + mb * batch_size, idx);
 
         costs[mb] = -compute_alphas(rnntm.log_probs2, T, U, rnntm.alphas);
     }

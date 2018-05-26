@@ -68,9 +68,7 @@ class RNNTLoss(Module):
         act_lens: Tensor of size (batch) containing size of each output sequence from the network
         label_lens: Tensor of (batch) containing label length of each example
         """
-        assert 1 <= len(labels.size()) <= 2  # labels must be 1 dimensional
-        if len(labels.shape) > 1:
-            labels = torch.cat([labels[i, :j] for i, j in enumerate(label_lens.data)])
+        assert len(labels.size()) <= 2  # labels must be 2 dimensional
         _assert_no_grad(labels)
         _assert_no_grad(act_lens)
         _assert_no_grad(label_lens)

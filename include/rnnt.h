@@ -83,7 +83,7 @@ struct rnntOptions {
  *              allocated in the same memory space as probs and memory
  *              ordering is identical.
  * \param [in]  flat_labels Always in CPU memory.  A concatenation
- *              of all the labels for the minibatch.
+ *              of all the labels for the minibatch (should be padded to same length)
  * \param [in]  label_lengths Always in CPU memory. The length of each label
  *              for each example in the minibatch.
  * \param [in]  input_lengths Always in CPU memory.  The number of time steps

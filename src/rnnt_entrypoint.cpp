@@ -32,7 +32,7 @@ const char* rnntGetStatusString(rnntStatus_t status) {
 }
 
 
-rnntStatus_t compute_rnnt_loss(float* const activations, //BTUV
+rnntStatus_t compute_rnnt_loss(const float* const activations, //BTUV
                              float* gradients,
                              const int* const flat_labels,
                              const int* const label_lengths,

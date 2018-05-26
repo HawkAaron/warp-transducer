@@ -102,7 +102,7 @@ struct rnntOptions {
  *  \return Status information
  *
  * */
-rnntStatus_t compute_rnnt_loss(float* const activations,
+rnntStatus_t compute_rnnt_loss(const float* const activations,
                              float* gradients,
                              const int* const flat_labels,
                              const int* const label_lengths,

@@ -83,20 +83,14 @@ IF (WITH_GPU)
         TARGET_LINK_LIBRARIES(warprnnt ${CUDA_curand_LIBRARY})
     ENDIF()
 
-    add_executable(test_cpu tests/test_cpu.cpp tests/random.cpp )
-    TARGET_LINK_LIBRARIES(test_cpu warprnnt)
-    SET_TARGET_PROPERTIES(test_cpu PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11")
+    cuda_add_executable(test_time_gpu tests/test_time.cu tests/random.cpp )
+    TARGET_LINK_LIBRARIES(test_time_gpu warprnnt ${CUDA_curand_LIBRARY})
+    SET_TARGET_PROPERTIES(test_time_gpu PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11")
 
     cuda_add_executable(test_gpu tests/test_gpu.cu tests/random.cpp )
     TARGET_LINK_LIBRARIES(test_gpu warprnnt ${CUDA_curand_LIBRARY})
     SET_TARGET_PROPERTIES(test_gpu PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11")
 
-    INSTALL(TARGETS warprnnt
-            RUNTIME DESTINATION "bin"
-            LIBRARY DESTINATION "lib"
-            ARCHIVE DESTINATION "lib")
-
-    INSTALL(FILES include/rnnt.h DESTINATION "include")
 ELSE()
     MESSAGE(STATUS "Building shared library with no GPU support")
 
@@ -106,18 +100,20 @@ ELSE()
 
     ADD_LIBRARY(warprnnt SHARED src/rnnt_entrypoint.cpp)
 
-    add_executable(test_cpu tests/test_cpu.cpp tests/random.cpp )
-    TARGET_LINK_LIBRARIES(test_cpu warprnnt)
-    SET_TARGET_PROPERTIES(test_cpu PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11")
-
-    add_executable(test_time tests/test_time.cpp tests/random.cpp )
-    TARGET_LINK_LIBRARIES(test_time warprnnt)
-    SET_TARGET_PROPERTIES(test_time PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11")
-
-    INSTALL(TARGETS warprnnt
-            RUNTIME DESTINATION "bin"
-            LIBRARY DESTINATION "lib"
-            ARCHIVE DESTINATION "lib")
-
-    INSTALL(FILES include/rnnt.h DESTINATION "include")
 ENDIF()
+
+
+add_executable(test_cpu tests/test_cpu.cpp tests/random.cpp )
+TARGET_LINK_LIBRARIES(test_cpu warprnnt)
+SET_TARGET_PROPERTIES(test_cpu PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11")
+
+add_executable(test_time tests/test_time.cpp tests/random.cpp )
+TARGET_LINK_LIBRARIES(test_time warprnnt)
+SET_TARGET_PROPERTIES(test_time PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11")
+
+INSTALL(TARGETS warprnnt
+        RUNTIME DESTINATION "bin"
+        LIBRARY DESTINATION "lib"
+        ARCHIVE DESTINATION "lib")
+
+INSTALL(FILES include/rnnt.h DESTINATION "include")

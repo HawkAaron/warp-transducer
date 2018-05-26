@@ -51,7 +51,11 @@ def wrap_and_call(acts, labels):
     if use_cuda:
         costs = costs.cpu()
         grads = grads.cpu()
-
+    for i, a in enumerate(acts.grad.data.numpy().reshape(-1)):
+        if i % 6 == 0: print(end='\n')
+        print('{:.6f}, '.format(a), end='')
+    print()
+    # print(acts.grad.data.numpy())
     return costs.data.numpy(), grads.data.numpy()
 
 
@@ -181,11 +185,11 @@ def time_test(blank=0):
 
 if __name__ == "__main__":
     use_cuda = False
-    small_test()
+    # small_test()
     big_test()
-    print("CPU Tests passed!")
-    if torch.cuda.is_available():
-        use_cuda = True
-        small_test()
-    print("GPU Tests passed!")
-    time_test()
+    # print("CPU Tests passed!")
+    # if torch.cuda.is_available():
+    #     use_cuda = True
+    #     small_test()
+    # print("GPU Tests passed!")
+    # time_test()

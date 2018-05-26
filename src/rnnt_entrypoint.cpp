@@ -5,6 +5,9 @@
 #include <rnnt.h>
 
 #include "detail/cpu_rnnt.h"
+#ifdef __CUDACC__
+    #include "detail/gpu_rnnt.h"
+#endif
 
 extern "C" {
 
@@ -55,17 +58,38 @@ rnntStatus_t compute_rnnt_loss(const float* const activations, //BTUV
         options.maxU <= 0)
         return RNNT_STATUS_INVALID_VALUE;
 
-    CpuRNNT<float> rnnt(minibatch, options.maxT, options.maxU, alphabet_size, workspace, 
-                            options.blank_label, options.num_threads, options.batch_first);
+    if (options.loc == RNNT_CPU) {
+        CpuRNNT<float> rnnt(minibatch, options.maxT, options.maxU, alphabet_size, workspace, 
+                                options.blank_label, options.num_threads, options.batch_first);
 
-    if (gradients != NULL)
-        return rnnt.cost_and_grad(activations, gradients,
-                                    costs,
-                                    flat_labels, label_lengths,
-                                    input_lengths);
-    else
-        return rnnt.score_forward(activations, costs, flat_labels,
-                                    label_lengths, input_lengths);
+        if (gradients != NULL)
+            return rnnt.cost_and_grad(activations, gradients,
+                                        costs,
+                                        flat_labels, label_lengths,
+                                        input_lengths);
+        else
+            return rnnt.score_forward(activations, costs, flat_labels,
+                                        label_lengths, input_lengths);
+    } else if (options.loc == RNNT_GPU) {
+#ifdef __CUDACC__
+        GpuRNNT<float> rnnt(minibatch, options.maxT, options.maxU, alphabet_size, workspace,
+                                options.blank_label, options.num_threads, options.stream);
+
+        if (gradients != NULL)
+            return rnnt.cost_and_grad(activations, gradients,
+                                        costs,
+                                        flat_labels, label_lengths,
+                                        input_lengths);
+        else
+            return rnnt.score_forward(activations, costs, flat_labels,
+                                        label_lengths, input_lengths);
+#else
+        std::cerr << "GPU execution requested, but not compiled with GPU support" << std::endl;
+        return RNNT_STATUS_EXECUTION_FAILED;
+#endif
+    } else {
+        return RNNT_STATUS_INVALID_VALUE;
+    }
 }
 
 
@@ -87,8 +111,15 @@ rnntStatus_t get_workspace_size(int maxT, int maxU,
     // alphas & betas
     per_minibatch_bytes += sizeof(float) * maxT * maxU * 2;
 
-    // blank & label log probability cache
-    per_minibatch_bytes += sizeof(float) * maxT * maxU * 2;
+    if (!gpu) {
+        // blank & label log probability cache
+        per_minibatch_bytes += sizeof(float) * maxT * maxU * 2;
+    } else {
+        // softmax denominator
+        per_minibatch_bytes += sizeof(float) * maxT * maxU;
+        // forward-backward loglikelihood
+        per_minibatch_bytes += sizeof(float) * 2;
+    }
 
     *size_bytes = per_minibatch_bytes * minibatch;
 

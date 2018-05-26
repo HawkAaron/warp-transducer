@@ -3,45 +3,68 @@ A fast parallel implementation of RNN Transducer (Graves 2013 joint network), on
 
 [GPU implementation is now available for Graves2012 add network.](https://github.com/HawkAaron/warp-transducer/tree/add_network)
 
-## Installation
+## GPU Performance
+Benchmarked on a GeForce GTX 1080 Ti GPU.
 
-Install [PyTorch](https://github.com/pytorch/pytorch#installation).
+| **T=150, L=40, A=28** | **warp-transducer** |
+| --------------------- | ------------------- |
+|         N=1           |      8.51 ms        |
+|         N=16          |      11.43 ms       |
+|         N=32          |      12.65 ms       |
+|         N=64          |      14.75 ms       |
+|         N=128         |      19.48 ms       |
 
-`WARP_RNNT_PATH` should be set to the location of a built WarpRNNT
-(i.e. `libwarprnnt.so`).  This defaults to `../build`, so from within a
-new warp-rnnt clone you could build WarpRNNT like this:
+| **T=150, L=20, A=5000** | **warp-transducer** |
+| ----------------------- | ------------------- |
+|         N=1             |      4.79 ms        |
+|         N=16            |      24.44 ms       |
+|         N=32            |      41.38 ms       |
+|         N=64            |      80.44 ms       |
+|         N=128           |      51.46 ms       |
 
+<!-- | **T=1500, L=300, A=50** | **warp-transducer** |
+| ----------------------- | ------------------- |
+|         N=1             |      570.33 ms      |
+|         N=16            |      768.57 ms      |
+|         N=32            |      955.05 ms      |
+|         N=64            |      569.34 ms      |
+|         N=128           |      -              |
+ -->
+
+## Interface
+The interface is in `include/rnnt.h`. It supports CPU or GPU execution, and you can specify OpenMP parallelism
+if running on the CPU, or the CUDA stream if running on the GPU. We took care to ensure that the library does not 
+preform memory allocation internally, in oder to avoid synchronizations and overheads caused by memory allocation.
+
+## Compilation
+warp-transducer has been tested on Ubuntu 16.04 and CentOS 7. Windows is not supported at this time.
+
+First get the code:
 ```bash
 git clone https://github.com/HawkAaron/warp-transducer
 cd warp-transducer
-mkdir build; cd build
-cmake -D WITH_GPU=OFF ..
+```
+create a build directory:
+```bash
+mkdir build
+cd build
+```
+if you have a non standard CUDA install `export CUDA_HOME=/path_to_cuda` so that CMake detects CUDA.
+
+Run cmake and build:
+```bash
+cmake ..
 make
 ```
 
-Otherwise, set `WARP_RNNT_PATH` to wherever you have `libwarprnnt.so`
-installed. If you have a GPU, you should also make sure that
-`CUDA_HOME` is set to the home cuda directory (i.e. where
-`include/cuda.h` and `lib/libcudart.so` live). For example:
+The C library should now be built along with test executables. If CUDA was detected, then `test_gpu` will be built;
+`test_cpu` will always be built.
 
-```
-export CUDA_HOME="/usr/local/cuda"
-```
+## Test
+To run the tests, make sure the CUDA libraries are in `LD_LIBRARY_PATH` (DYLD_LIBRARY_PATH for OSX).
 
-Now install the bindings:
-```
-cd pytorch_binding
-python setup.py install
-```
-
-If you try the above and get a dlopen error on OSX with anaconda3 (as recommended by pytorch):
-```
-cd ../pytorch_binding
-python setup.py install
-cd ../build
-cp libwarprnnt.dylib /Users/$WHOAMI/anaconda3/lib
-```
-This will resolve the library not loaded error. This can be easily modified to work with other python installs if needed.
+## Contributing
+We welcome improvements from the community, please feel free to submit pull requests.
 
 ## Reference
 * [Sequence Transduction with Recurrent Neural Networks](https://arxiv.org/abs/1211.3711)

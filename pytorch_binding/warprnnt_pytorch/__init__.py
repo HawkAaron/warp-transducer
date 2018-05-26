@@ -45,10 +45,10 @@ class RNNTLoss(Module):
     """
     Parameters:
         size_average (bool): normalize the loss by the batch size
-            (default: `False`)
+            (default: `True`)
         blank_label (int): default 0
     """
-    def __init__(self, size_average=False, blank_label=0):
+    def __init__(self, size_average=True, blank_label=0):
         super(RNNTLoss, self).__init__()
         self.rnnt = _RNNT.apply
         self.size_average = size_average
@@ -57,7 +57,7 @@ class RNNTLoss(Module):
     def forward(self, acts, labels, act_lens, label_lens):
         """
         acts: Tensor of (batch x seqLength x labelLength x outputDim) containing output from network
-        labels: 1 dimensional Tensor containing all the targets of the batch in one sequence
+        labels: 2 dimensional Tensor containing all the targets of the batch with zero padded
         act_lens: Tensor of size (batch) containing size of each output sequence from the network
         label_lens: Tensor of (batch) containing label length of each example
         """

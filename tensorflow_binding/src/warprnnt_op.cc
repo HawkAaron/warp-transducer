@@ -13,9 +13,9 @@
 REGISTER_OP("WarpRNNT")
     .Input("trans_acts: float32")
     .Input("pred_acts: float32")
-    .Input("flat_labels: int32")
-    .Input("label_lengths: int32")
+    .Input("labels: int32")
     .Input("input_lengths: int32")
+    .Input("label_lengths: int32")
     .Attr("blank_label: int = 0")
     .Output("costs: float32")
     .Output("trans_grad: float32")
@@ -35,12 +35,12 @@ class WarpRNNTOpBase : public tf::OpKernel {
         // Grab the input tensors
         const tf::Tensor* trans_acts;
         const tf::Tensor* pred_acts;
-        const tf::Tensor* flat_labels;
+        const tf::Tensor* labels;
         const tf::Tensor* label_lengths;
         const tf::Tensor* input_lengths;
         OP_REQUIRES_OK(ctx, ctx->input("trans_acts", &trans_acts));
         OP_REQUIRES_OK(ctx, ctx->input("pred_acts", &pred_acts));
-        OP_REQUIRES_OK(ctx, ctx->input("flat_labels", &flat_labels));
+        OP_REQUIRES_OK(ctx, ctx->input("labels", &labels));
         OP_REQUIRES_OK(ctx, ctx->input("label_lengths", &label_lengths));
         OP_REQUIRES_OK(ctx, ctx->input("input_lengths", &input_lengths));
 
@@ -48,22 +48,22 @@ class WarpRNNTOpBase : public tf::OpKernel {
                     tf::errors::InvalidArgument("trans_acts is not a 3-Tensor"));
         OP_REQUIRES(ctx, pred_acts->shape().dims() == 3,
                     tf::errors::InvalidArgument("pred_acts is not a 3-Tensor"));
-        OP_REQUIRES(ctx, tf::TensorShapeUtils::IsVector(flat_labels->shape()),
-                    tf::errors::InvalidArgument("flat_labels is not a vector"));
+        OP_REQUIRES(ctx, labels->shape().dims() == 2,
+                    tf::errors::InvalidArgument("labels is not a 2-Tensor"));
         OP_REQUIRES(ctx, tf::TensorShapeUtils::IsVector(label_lengths->shape()),
                      tf::errors::InvalidArgument("label_lengths is not a vector"));
         OP_REQUIRES(ctx, tf::TensorShapeUtils::IsVector(input_lengths->shape()),
                      tf::errors::InvalidArgument("input_lengths is not a vector"));
 
         const auto& acts_shape = trans_acts->shape();
-        const auto max_time = acts_shape.dim_size(0);
-        const auto batch_size = acts_shape.dim_size(1);
+        const auto batch_size = acts_shape.dim_size(0);
+        const auto max_time = acts_shape.dim_size(1);
         const auto num_classes_raw = acts_shape.dim_size(2);
-        const auto max_u = pred_acts->shape().dim_size(0);
+        const auto max_u = pred_acts->shape().dim_size(1);
 
         auto trans_acts_t = trans_acts->tensor<float, 3>();
         auto pred_acts_t = pred_acts->tensor<float, 3>();
-        auto flat_labels_t = flat_labels->vec<int32_t>();
+        auto labels_t = labels->tensor<int32_t, 2>();
 
         OP_REQUIRES(
                 ctx, tf::FastBoundsCheck(num_classes_raw, std::numeric_limits<int>::max()),
@@ -114,13 +114,12 @@ class WarpRNNTOpBase : public tf::OpKernel {
 
         size_t workspace_size_bytes;
         bool use_gpu = false;
-        if(options.loc == RNNT_CPU) {
+        if(options.loc == RNNT_GPU) {
             use_gpu = true;
         }
         auto warp_status = get_workspace_size(max_time,
                                               max_u,
                                               batch_size,
-                                              alphabet_size,
                                               use_gpu,
                                               &workspace_size_bytes);
 
@@ -138,7 +137,7 @@ class WarpRNNTOpBase : public tf::OpKernel {
                                         pred_acts_t.data(),
                                         trans_grads_t.data(),
                                         pred_grads_t.data(),
-                                        flat_labels_t.data(),
+                                        labels_t.data(),
                                         label_lengths_t.data(),
                                         input_lengths_t.data(),
                                         alphabet_size, batch_size,
@@ -197,9 +196,6 @@ class WarpRNNTOpGPU : public WarpRNNTOpBase {
 };
 
 REGISTER_KERNEL_BUILDER(Name("WarpRNNT").Device(::tensorflow::DEVICE_GPU)
-                        .HostMemory("flat_labels")
-                        .HostMemory("label_lengths")
-                        .HostMemory("input_lengths")
                         .HostMemory("costs"),
                         WarpRNNTOpGPU);
 #undef EIGEN_USE_GPU

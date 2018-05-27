@@ -7,25 +7,25 @@ lib_file = imp.find_module('kernels', __path__)[1]
 _warprnnt = tf.load_op_library(lib_file)
 
 
-def rnnt(trans_acts, pred_acts, flat_labels, label_lengths, input_lengths,
+def rnnt(trans_acts, pred_acts, labels, input_lengths, label_lengths,
         blank_label=0):
     '''Computes the RNNT loss between a sequence of activations and a
     ground truth labeling.
     Args:
         trans_acts: A 3-D Tensor of floats.  The dimensions
-                     should be (t, n, a), where t is the time index, n
-                     is the minibatch index, and a indexes over
+                     should be (B, T, V), where T is the time index, B
+                     is the minibatch index, and V indexes over
                      activations for each symbol in the alphabet.
         pred_acts: A 3-D Tensor of floats.  The dimensions
-                     should be (u, n, a), where u is the predicted label, n
-                     is the minibatch index, and a indexes over
+                     should be (B, U, V), where U is the predicted label, B
+                     is the minibatch index, and V indexes over
                      activations for each symbol in the alphabet.
-        flat_labels: A 1-D Tensor of ints, a concatenation of all the
-                     labels for the minibatch.
-        label_lengths: A 1-D Tensor of ints, the length of each label
-                       for each example in the minibatch.
+        labels: A 2-D Tensor of ints, a padded label sequences to make sure 
+                     labels for the minibatch are same length.
         input_lengths: A 1-D Tensor of ints, the number of time steps
                        for each sequence in the minibatch.
+        label_lengths: A 1-D Tensor of ints, the length of each label
+                       for each example in the minibatch.
         blank_label: int, the label value/index that the RNNT
                      calculation should use as the blank label
     Returns:
@@ -34,8 +34,8 @@ def rnnt(trans_acts, pred_acts, flat_labels, label_lengths, input_lengths,
     * This class performs the softmax operation internally.
     * The label reserved for the blank symbol should be label 0.
     '''
-    loss, _ = _warprnnt.warp_rnnt(trans_acts, pred_acts, flat_labels, label_lengths,
-                                  input_lengths, blank_label)
+    loss, _ = _warprnnt.warp_rnnt(trans_acts, pred_acts, labels, input_lengths,
+                                  label_lengths, blank_label)
     return loss
 
 

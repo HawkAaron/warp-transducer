@@ -61,9 +61,9 @@ import warprnnt_tensorflow
 The WarpRNNT op is available via the `warprnnt_tensorflow.rnnt` function:
 
 ```python
-costs = warprnnt_tensorflow.rnnt(trans_acts, pred_acts, flat_labels, label_lengths, input_lengths)
+costs = warprnnt_tensorflow.rnnt(trans_acts, pred_acts, labels, label_lengths, input_lengths)
 ```
 
-The `trans_acts` and `pred_acts` inputs are 3 dimensional Tensors and all the others
-are single dimension Tensors.  See the main WarpRNNT documentation for
-more information.
+The `trans_acts` and `pred_acts` inputs are 3 dimensional Tensors, and `labels`
+is 2 dimensinal Tensor, and all the others are single dimension Tensors.
+See the main WarpRNNT documentation for more information.

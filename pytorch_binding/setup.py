@@ -55,7 +55,7 @@ setup(
     name="warprnnt_pytorch",
     version="0.1",
     description="PyTorch wrapper for RNN-Transducer",
-    url="https://github.com/HawkAaron/warp-rnnt",
+    url="https://github.com/HawkAaron/warp-transducer",
     author="Mingkun Huang",
     author_email="mingkunhuang95@gmail.com",
     license="Apache",

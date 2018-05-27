@@ -27,7 +27,7 @@ __global__ void compute_alphas_kernel(const Tp* const trans_acts, const Tp* cons
             if (t > 0 && u > 0) {
                 Tp no_emit = alphas[(t-1) * maxU + u] + logp(denom, trans_acts, pred_acts, maxT, maxU, alphabet_size, tid, t-1, u, blank_);
                 Tp emit = alphas[t * maxU + u-1] + logp(denom, trans_acts, pred_acts, maxT, maxU, alphabet_size, tid, t, u-1, labels[u-1]);
-                alphas[t * maxU + u] = log_sum_exp<Tp>(emit, no_emit);
+                alphas[t * maxU + u] = rnnt_helper::log_sum_exp<Tp>(emit, no_emit);
             }
         }
     }
@@ -57,7 +57,7 @@ __global__ void compute_betas_kernel(const Tp* const trans_acts, const Tp* const
             if (t < T-1 && u < U-1) {
                 Tp no_emit = betas[(t+1) * maxU + u] + logp(denom, trans_acts, pred_acts, maxT, maxU, alphabet_size, tid, t, u, blank_);
                 Tp emit = betas[t * maxU + u+1] + logp(denom, trans_acts, pred_acts, maxT, maxU, alphabet_size, tid, t, u, labels[u]);
-                betas[t * maxU + u] = log_sum_exp<Tp>(emit, no_emit);
+                betas[t * maxU + u] = rnnt_helper::log_sum_exp<Tp>(emit, no_emit);
             }
         }
     }

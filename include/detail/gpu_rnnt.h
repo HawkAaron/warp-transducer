@@ -38,8 +38,8 @@ public:
 
     void log_softmax(const ProbT* const trans_acts, const ProbT* const pred_acts, ProbT* denom);
 
-    rnntStatus_t compute_cost_and_score(ProbT* const trans_acts,
-                                        ProbT* const pred_acts,
+    rnntStatus_t compute_cost_and_score(const ProbT* const trans_acts,
+                                        const ProbT* const pred_acts,
                                         ProbT* trans_grad,
                                         ProbT* pred_grad,
                                         ProbT* costs,
@@ -47,8 +47,8 @@ public:
                                         const int* const label_lengths,
                                         const int* const input_lengths);
 
-    rnntStatus_t cost_and_grad(ProbT* const trans_acts,
-                              ProbT* const pred_acts,
+    rnntStatus_t cost_and_grad(const ProbT* const trans_acts,
+                              const ProbT* const pred_acts,
                               ProbT* trans_grad,
                               ProbT* pred_grad,
                               ProbT* costs,
@@ -56,8 +56,8 @@ public:
                               const int* const label_lengths,
                               const int* const input_lengths);
 
-    rnntStatus_t score_forward(ProbT* const trans_acts,
-                              ProbT* const pred_acts,
+    rnntStatus_t score_forward(const ProbT* const trans_acts,
+                              const ProbT* const pred_acts,
                               ProbT* costs,
                               const int* const pad_labels,
                               const int* const label_lengths,
@@ -86,8 +86,8 @@ GpuRNNT<ProbT>::log_softmax(const ProbT* const ft, const ProbT* const gu, ProbT*
 
 template<typename ProbT>
 rnntStatus_t
-GpuRNNT<ProbT>::compute_cost_and_score(ProbT* const trans_acts,
-                                    ProbT* const pred_acts,
+GpuRNNT<ProbT>::compute_cost_and_score(const ProbT* const trans_acts,
+                                    const ProbT* const pred_acts,
                                     ProbT* trans_grads,
                                     ProbT* pred_grads,
                                     ProbT* costs,
@@ -175,14 +175,14 @@ GpuRNNT<ProbT>::compute_cost_and_score(ProbT* const trans_acts,
 
 template<typename ProbT>
 rnntStatus_t
-GpuRNNT<ProbT>::cost_and_grad(ProbT* const trans_acts,
-                       ProbT* const pred_acts,
-                       ProbT* trans_grads,
-                       ProbT* pred_grads,
-                       ProbT* costs,
-                       const int* const pad_labels,
-                       const int* const label_lengths,
-                       const int* const input_lengths) {
+GpuRNNT<ProbT>::cost_and_grad(const ProbT* const trans_acts,
+                            const ProbT* const pred_acts,
+                            ProbT* trans_grads,
+                            ProbT* pred_grads,
+                            ProbT* costs,
+                            const int* const pad_labels,
+                            const int* const label_lengths,
+                            const int* const input_lengths) {
 
     if (trans_acts == nullptr || 
         pred_acts == nullptr ||
@@ -200,12 +200,12 @@ GpuRNNT<ProbT>::cost_and_grad(ProbT* const trans_acts,
 
 template<typename ProbT>
 rnntStatus_t
-GpuRNNT<ProbT>::score_forward(ProbT* const trans_acts, 
-                       ProbT* const pred_acts,
-                       ProbT* costs,
-                       const int* const pad_labels,
-                       const int* const label_lengths,
-                       const int* const input_lengths) {
+GpuRNNT<ProbT>::score_forward(const ProbT* const trans_acts, 
+                            const ProbT* const pred_acts,
+                            ProbT* costs,
+                            const int* const pad_labels,
+                            const int* const label_lengths,
+                            const int* const input_lengths) {
     
     if (trans_acts == nullptr || 
         pred_acts == nullptr ||

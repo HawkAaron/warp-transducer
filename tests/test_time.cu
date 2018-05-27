@@ -67,7 +67,7 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
 
 
     size_t gpu_alloc_bytes;
-    throw_on_error(get_workspace_size(T, L+1, B, A,
+    throw_on_error(get_workspace_size(T, L+1, B,
                                      true,
                                      &gpu_alloc_bytes),
                     "Error: get_workspace_size in run_test");

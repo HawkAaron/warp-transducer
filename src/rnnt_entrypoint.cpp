@@ -35,8 +35,8 @@ const char* rnntGetStatusString(rnntStatus_t status) {
 }
 
 
-rnntStatus_t compute_rnnt_loss(float* const trans_acts, // BTV
-                             float* const pred_acts,    // BUV
+rnntStatus_t compute_rnnt_loss(const float* const trans_acts, // BTV
+                             const float* const pred_acts,    // BUV
                              float* trans_grad,
                              float* pred_grad,
                              const int* const flat_labels,
@@ -102,14 +102,12 @@ rnntStatus_t compute_rnnt_loss(float* const trans_acts, // BTV
 
 rnntStatus_t get_workspace_size(int maxT, int maxU,
                                int minibatch,
-                               int alphabet_size,
                                bool gpu,
                                size_t* size_bytes)
 {
     if (minibatch <= 0 ||
         maxT <= 0 ||
-        maxU <= 0 ||
-        alphabet_size <= 0)
+        maxU <= 0)
         return RNNT_STATUS_INVALID_VALUE;
 
     *size_bytes = 0;

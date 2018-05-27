@@ -39,7 +39,7 @@ bool small_test() {
     options.num_threads = 1;
 
     size_t cpu_alloc_bytes;
-    throw_on_error(get_workspace_size(T, U, B, alphabet_size,
+    throw_on_error(get_workspace_size(T, U, B,
                                       false,
                                       &cpu_alloc_bytes),
                    "Error: get_workspace_size in small_test");
@@ -127,7 +127,7 @@ bool options_test() {
 
     size_t cpu_alloc_bytes;
     throw_on_error(get_workspace_size(T, L, minibatch,
-                                      alphabet_size, false,
+                                      false,
                                       &cpu_alloc_bytes),
                    "Error: get_workspace_size in options_test");
 
@@ -223,7 +223,7 @@ bool inf_test() {
 
     size_t cpu_alloc_bytes;
     throw_on_error(get_workspace_size(T, L, minibatch,
-                                      alphabet_size, false,
+                                      false,
                                       &cpu_alloc_bytes),
                    "Error: get_workspace_size in inf_test");
 
@@ -325,7 +325,7 @@ bool grad_check(int T, int L, int alphabet_size,
 
     size_t cpu_alloc_bytes;
     throw_on_error(get_workspace_size(T, L, sizes.size(),
-                                      alphabet_size, false,
+                                      false,
                                       &cpu_alloc_bytes),
                    "Error: get_workspace_size in grad_check");
 

@@ -120,8 +120,6 @@ rnntStatus_t compute_rnnt_loss(const float* const trans_acts,
  * \param [in]  maxT maximum length along time dimension.
  * \param [in]  maxU maximum length along prediction dimention.
  * \param [in]  minibatch How many examples in a minibatch.
- * \param [in]  alphabet_size The number of possible output symbols.  There
- *              should be this many probabilities for each time step.
  * \param [in]  info see struct rnntOptions
  * \param [out] size_bytes is pointer to a scalar where the memory
  *              requirement in bytes will be placed. This memory should be allocated
@@ -131,7 +129,6 @@ rnntStatus_t compute_rnnt_loss(const float* const trans_acts,
  **/
 rnntStatus_t get_workspace_size(int maxT, int maxU,
                                int minibatch,
-                               int alphabet_size,
                                bool gpu,
                                size_t* size_bytes);
 

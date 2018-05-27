@@ -58,7 +58,7 @@ extern "C" int cpu_rnnt(THFloatTensor *trans_acts,
 #endif
 
     size_t cpu_size_bytes;
-    get_workspace_size(maxT, maxU, minibatch_size, alphabet_size,
+    get_workspace_size(maxT, maxU, minibatch_size,
                        false, &cpu_size_bytes);
 
     void* cpu_workspace = malloc(cpu_size_bytes);
@@ -113,7 +113,7 @@ extern "C" int gpu_rnnt(THCudaTensor *trans_acts,
     options.stream = THCState_getCurrentStream(state);
 
     size_t gpu_size_bytes;
-    get_workspace_size(maxT, maxU, minibatch_size, alphabet_size,
+    get_workspace_size(maxT, maxU, minibatch_size,
                        true, &gpu_size_bytes);
 
     void* gpu_workspace;

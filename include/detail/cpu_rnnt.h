@@ -49,8 +49,8 @@ public:
 
     void log_softmax(const ProbT* const trans_acts, const ProbT* const pred_acts, ProbT* denom);
 
-    rnntStatus_t cost_and_grad(ProbT* const trans_acts,
-                              ProbT* const pred_acts,
+    rnntStatus_t cost_and_grad(const ProbT* const trans_acts,
+                              const ProbT* const pred_acts,
                               ProbT* trans_grad,
                               ProbT* pred_grad,
                               ProbT* costs,
@@ -58,8 +58,8 @@ public:
                               const int* const label_lengths,
                               const int* const input_lengths);
     
-    rnntStatus_t score_forward(ProbT* const trans_acts,
-                              ProbT* const pred_acts,
+    rnntStatus_t score_forward(const ProbT* const trans_acts,
+                              const ProbT* const pred_acts,
                               ProbT* costs,
                               const int* const flat_labels,
                               const int* const label_lengths,
@@ -88,11 +88,11 @@ private:
 
     class CpuRNNT_logProbs {
     public:
-        CpuRNNT_logProbs(ProbT* const trans_acts, ProbT* const pred_acts, ProbT* denom, 
+        CpuRNNT_logProbs(const ProbT* const trans_acts, const ProbT* const pred_acts, const ProbT* const denom, 
                         CpuRNNT_index& idx, CpuRNNT* rnnt);
-        ProbT* trans_acts;
-        ProbT* pred_acts;
-        ProbT* denom;
+        const ProbT* const trans_acts;
+        const ProbT* const pred_acts;
+        const ProbT* const denom;
         CpuRNNT_index idx;
         CpuRNNT* rnnt;
 
@@ -107,8 +107,8 @@ private:
     int blank_;
     int num_threads_;
     
-    ProbT cost_and_grad_kernel(ProbT* const trans_acts, ProbT* const pred_acts,
-                               ProbT* const denom,
+    ProbT cost_and_grad_kernel(const ProbT* const trans_acts, const ProbT* const pred_acts,
+                               const ProbT* const denom,
                                ProbT* trans_grad, ProbT* pred_grad,
                                const int* const labels, int T, int U, size_t bytes_used);
     
@@ -146,8 +146,8 @@ inline int CpuRNNT<ProbT>::CpuRNNT_index::operator()(int t, int u, int v) {
 }
 
 template<typename ProbT>
-CpuRNNT<ProbT>::CpuRNNT_logProbs::CpuRNNT_logProbs(ProbT* const trans_acts, 
-        ProbT* const pred_acts, ProbT* denom, CpuRNNT_index& idx, CpuRNNT* rnnt) :
+CpuRNNT<ProbT>::CpuRNNT_logProbs::CpuRNNT_logProbs(const ProbT* const trans_acts, 
+        const ProbT* const pred_acts, const ProbT* const denom, CpuRNNT_index& idx, CpuRNNT* rnnt) :
             trans_acts(trans_acts), pred_acts(pred_acts), denom(denom), idx(idx), rnnt(rnnt) {
     
     // log_softmax(trans_acts, pred_acts, denom);
@@ -187,8 +187,8 @@ inline ProbT CpuRNNT<ProbT>::CpuRNNT_logProbs::operator()(int t, int u, int v) {
 
 template<typename ProbT>
 ProbT
-CpuRNNT<ProbT>::cost_and_grad_kernel(ProbT* const trans_acts, ProbT* const pred_acts,
-                                    ProbT* const denom,
+CpuRNNT<ProbT>::cost_and_grad_kernel(const ProbT* const trans_acts, const ProbT* const pred_acts,
+                                    const ProbT* const denom,
                                     ProbT* trans_grad, ProbT* pred_grad,
                                     const int* const labels,
                                     int T, int U, size_t bytes_used) {
@@ -300,14 +300,14 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* trans_grad, ProbT* pred_grad,
 
 template<typename ProbT>
 rnntStatus_t
-CpuRNNT<ProbT>::cost_and_grad(ProbT* const trans_acts,
-                       ProbT* const pred_acts,
-                       ProbT* trans_grads,
-                       ProbT* pred_grads,
-                       ProbT* costs,
-                       const int* const flat_labels,
-                       const int* const label_lengths,
-                       const int* const input_lengths) {
+CpuRNNT<ProbT>::cost_and_grad(const ProbT* const trans_acts,
+                            const ProbT* const pred_acts,
+                            ProbT* trans_grads,
+                            ProbT* pred_grads,
+                            ProbT* costs,
+                            const int* const flat_labels,
+                            const int* const label_lengths,
+                            const int* const input_lengths) {
 
     // denom
     ProbT* denom = static_cast<ProbT*>(workspace_);
@@ -339,12 +339,12 @@ CpuRNNT<ProbT>::cost_and_grad(ProbT* const trans_acts,
 
 template<typename ProbT>
 rnntStatus_t
-CpuRNNT<ProbT>::score_forward(ProbT* const trans_acts, 
-                       ProbT* const pred_acts,
-                       ProbT* costs,
-                       const int* const flat_labels,
-                       const int* const label_lengths,
-                       const int* const input_lengths) {
+CpuRNNT<ProbT>::score_forward(const ProbT* const trans_acts, 
+                            const ProbT* const pred_acts,
+                            ProbT* costs,
+                            const int* const flat_labels,
+                            const int* const label_lengths,
+                            const int* const input_lengths) {
 
     // denom
     ProbT* denom = static_cast<ProbT*>(workspace_);

@@ -196,6 +196,9 @@ class WarpRNNTOpGPU : public WarpRNNTOpBase {
 };
 
 REGISTER_KERNEL_BUILDER(Name("WarpRNNT").Device(::tensorflow::DEVICE_GPU)
+                        .HostMemory("labels")
+                        .HostMemory("input_lengths")
+                        .HostMemory("label_lengths")
                         .HostMemory("costs"),
                         WarpRNNTOpGPU);
 #undef EIGEN_USE_GPU

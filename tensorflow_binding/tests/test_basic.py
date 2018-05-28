@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-from warprnnt_tensorflow import rnnt
+from warprnnt_tensorflow import rnnt_loss
 
 trans_acts = tf.placeholder(tf.float32, [None, None, None])
 pred_acts = tf.placeholder(tf.float32, [None, None, None])
@@ -10,7 +10,7 @@ label_length = tf.placeholder(tf.int32, [None])
 
 B = 2; T = 4; U = 3; V = 6; blank = 5
 
-costs = rnnt(trans_acts, pred_acts, labels, input_length, label_length, blank)
+costs = rnnt_loss(trans_acts, pred_acts, labels, input_length, label_length, blank)
 grad = tf.gradients(costs, [trans_acts, pred_acts])
 
 a = np.array([0.20836473 , 0.68488914 , 0.8508703 , 0.5761989 , 0.19992691 , 0.8066367 ,

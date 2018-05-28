@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from warprnnt_tensorflow import rnnt
+from warprnnt_tensorflow import rnnt_loss
 from tensorflow.python.client import device_lib
 
 def is_gpu_available():
@@ -20,7 +20,7 @@ class WarpRNNTTest(tf.test.TestCase):
         labels_t = tf.constant(labels)
         input_lengths_t = tf.constant(input_lengths)
         label_lengths_t = tf.constant(label_lengths)
-        costs = rnnt(trans_acts_t, pred_acts_t, labels_t, input_lengths_t, label_lengths_t, blank)
+        costs = rnnt_loss(trans_acts_t, pred_acts_t, labels_t, input_lengths_t, label_lengths_t, blank)
 
         trans_grads, pred_grads = tf.gradients(costs, [trans_acts_t, pred_acts_t])
 
@@ -62,7 +62,7 @@ class WarpRNNTTest(tf.test.TestCase):
         labels_t = tf.constant(labels)
         input_lengths_t = tf.constant(input_lengths)
         label_lengths_t = tf.constant(label_lengths)
-        costs = rnnt(trans_acts_t, pred_acts_t, labels_t, input_lengths_t, label_lengths_t, blank)
+        costs = rnnt_loss(trans_acts_t, pred_acts_t, labels_t, input_lengths_t, label_lengths_t, blank)
         with self.test_session():
             print(costs.eval())
 

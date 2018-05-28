@@ -57,17 +57,16 @@ warp_rnnt_includes = [os.path.join(root_path, '../include')]
 include_dirs = tf_includes + warp_rnnt_includes
 
 if tf.__version__ >= '1.4':
-    include_dirs += [tf_include + '/../../external/nsync/public']
+    include_dirs += [os.path.join(tf_include, '../../external/nsync/public')]
 
 extra_compile_args = ['-std=c++11', '-fPIC', '-D_GLIBCXX_USE_CXX11_ABI=0']
 # current tensorflow code triggers return type errors, silence those for now
 extra_compile_args += ['-Wno-return-type']
 
-# NOTE if you compile from source, please remove that condition.
+extra_link_args = []
 if tf.__version__ >= '1.4':
-    extra_link_args = ['-L' + tf.sysconfig.get_lib(), '-ltensorflow_framework']
-else:
-    extra_link_args = []
+    if os.path.exists(os.path.join(tf_src_dir, 'libtensorflow_framework.so')):
+        extra_link_args = ['-L' + tf.sysconfig.get_lib(), '-ltensorflow_framework']
 
 if (enable_gpu):
     extra_compile_args += ['-DWARPRNNT_ENABLE_GPU']

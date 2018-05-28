@@ -40,8 +40,8 @@ class WarpRNNTOpBase : public tf::OpKernel {
         OP_REQUIRES_OK(ctx, ctx->input("label_lengths", &label_lengths));
         OP_REQUIRES_OK(ctx, ctx->input("input_lengths", &input_lengths));
 
-        OP_REQUIRES(ctx, acts->shape().dims() == 3,
-                    tf::errors::InvalidArgument("acts is not a 3-Tensor"));
+        OP_REQUIRES(ctx, acts->shape().dims() == 4,
+                    tf::errors::InvalidArgument("acts is not a 4-Tensor"));
         OP_REQUIRES(ctx, labels->shape().dims() == 2,
                     tf::errors::InvalidArgument("labels is not a 2-Tensor"));
         OP_REQUIRES(ctx, tf::TensorShapeUtils::IsVector(label_lengths->shape()),
@@ -55,7 +55,7 @@ class WarpRNNTOpBase : public tf::OpKernel {
         const auto max_u = acts_shape.dim_size(2);
         const auto num_classes_raw = acts_shape.dim_size(3);
 
-        auto acts_t = acts->tensor<float, 3>();
+        auto acts_t = acts->tensor<float, 4>();
         auto labels_t = labels->tensor<int32_t, 2>();
 
         OP_REQUIRES(
@@ -91,7 +91,7 @@ class WarpRNNTOpBase : public tf::OpKernel {
         tf::Tensor* grads = nullptr;
         OP_REQUIRES_OK(ctx, ctx->allocate_output("grads", acts->shape(), &grads));
         set_zero(grads);
-        auto grads_t = grads->tensor<float, 3>();
+        auto grads_t = grads->tensor<float, 4>();
 
         auto options = create_options(ctx);
         options.blank_label = blank_label_;

@@ -123,8 +123,8 @@ with open(README_PATH, "r") as handle:
 setuptools.setup(
     name = "warprnnt_tensorflow",
     version = "0.1",
-    description = "TensorFlow wrapper for warp-rnnt",
-    url="https://github.com/HawkAaron/warp-rnnt",
+    description = "TensorFlow wrapper for warp-transducer",
+    url="https://github.com/HawkAaron/warp-transducer",
     long_description = LONG_DESCRIPTION,
     author = "Gang Liao, Mingkun Huang",
     author_email = "gangliao@umd.edu, mingkunhuang95@gmail.com",

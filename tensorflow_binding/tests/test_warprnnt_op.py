@@ -39,7 +39,7 @@ class WarpRNNTTest(tf.test.TestCase):
         
         with self.test_session(use_gpu=use_gpu, force_gpu=use_gpu, config=config) as sess:
             (tf_costs, tf_trans_grad, tf_pred_grad) = sess.run([costs, trans_grads, pred_grads])
-            self.assertAllClose(tf_costs, expected_costs, atol=1e-6)
+            self.assertAllClose(tf_costs, expected_costs, atol=1e-3)
             self.assertAllClose(tf_trans_grad, expected_trans_grads, atol=1e-6)
             self.assertAllClose(tf_pred_grad, expected_pred_grads, atol=1e-6)
     
@@ -62,7 +62,7 @@ class WarpRNNTTest(tf.test.TestCase):
         labels_t = tf.constant(labels)
         input_lengths_t = tf.constant(input_lengths)
         label_lengths_t = tf.constant(label_lengths)
-        costs = rnnt_loss(trans_acts_t, pred_acts_t, labels_t, input_lengths_t, label_lengths_t, blank)
+        costs = rnnt_loss(trans_acts_t, pred_acts_t, labels_t, input_lengths_t, label_lengths_t, 0)
         with self.test_session():
             print(costs.eval())
 

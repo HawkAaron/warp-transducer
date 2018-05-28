@@ -1,13 +1,12 @@
 import imp
 import tensorflow as tf
 from tensorflow.python.framework import ops
-from tensorflow.python.ops.nn_grad import _BroadcastMul
 
 lib_file = imp.find_module('kernels', __path__)[1]
 _warprnnt = tf.load_op_library(lib_file)
 
 
-def rnnt(trans_acts, pred_acts, labels, input_lengths, label_lengths,
+def rnnt_loss(trans_acts, pred_acts, labels, input_lengths, label_lengths,
         blank_label=0):
     '''Computes the RNNT loss between a sequence of activations and a
     ground truth labeling.
@@ -34,19 +33,22 @@ def rnnt(trans_acts, pred_acts, labels, input_lengths, label_lengths,
     * This class performs the softmax operation internally.
     * The label reserved for the blank symbol should be label 0.
     '''
-    loss, _ = _warprnnt.warp_rnnt(trans_acts, pred_acts, labels, input_lengths,
+    loss, _, _ = _warprnnt.warp_rnnt(trans_acts, pred_acts, labels, input_lengths,
                                   label_lengths, blank_label)
     return loss
 
 
 @ops.RegisterGradient("WarpRNNT")
-def _RNNTLossGrad(op, grad_loss, _):
+def _RNNTLossGrad(op, grad_loss, trans_grad, pred_grad):
     trans_grad = op.outputs[1]
     pred_grad = op.outputs[2]
-    return [_BroadcastMul(grad_loss, trans_grad), _BroadcastMul(grad_loss, pred_grad), None, None]
+    # NOTE since here we are batch first, cannot use _BroadcastMul
+    grad_loss = tf.reshape(grad_loss, (-1, 1, 1))
+    return [grad_loss * trans_grad, grad_loss * pred_grad, None, None, None]
 
 @ops.RegisterShape("WarpRNNT")
 def _RNNTLossShape(op):
-    inputs_shape = op.inputs[0].get_shape().with_rank(3)
-    batch_size = inputs_shape[1]
-    return [batch_size, inputs_shape]
+    trans_inputs_shape = op.inputs[0].get_shape().with_rank(3)
+    pred_input_shape = op.inputs[1].get_shape().with_rank(3)
+    batch_size = trans_inputs_shape[0]
+    return [batch_size, trans_inputs_shape, pred_input_shape]

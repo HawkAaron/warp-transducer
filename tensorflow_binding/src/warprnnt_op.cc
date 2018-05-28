@@ -18,8 +18,8 @@ REGISTER_OP("WarpRNNT")
     .Input("label_lengths: int32")
     .Attr("blank_label: int = 0")
     .Output("costs: float32")
-    .Output("trans_grad: float32")
-    .Output("pred_grad: float32");
+    .Output("trans_grads: float32")
+    .Output("pred_grads: float32");
 
 namespace tf = tensorflow;
 
@@ -102,7 +102,7 @@ class WarpRNNTOpBase : public tf::OpKernel {
         auto trans_grads_t = trans_grads->tensor<float, 3>();
 
         tf::Tensor* pred_grads = nullptr;
-        OP_REQUIRES_OK(ctx, ctx->allocate_output("pred_grads", pred_grads->shape(),
+        OP_REQUIRES_OK(ctx, ctx->allocate_output("pred_grads", pred_acts->shape(),
                                                  &pred_grads));
         set_zero(pred_grads);
         auto pred_grads_t = pred_grads->tensor<float, 3>();

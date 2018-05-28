@@ -56,9 +56,18 @@ tf_includes = [tf_include, tf_src_dir]
 warp_rnnt_includes = [os.path.join(root_path, '../include')]
 include_dirs = tf_includes + warp_rnnt_includes
 
-extra_compile_args = ['-std=c++11', '-fPIC']
+if tf.__version__ >= '1.4':
+    include_dirs += [tf_include + '/../../external/nsync/public']
+
+extra_compile_args = ['-std=c++11', '-fPIC', '-D_GLIBCXX_USE_CXX11_ABI=0']
 # current tensorflow code triggers return type errors, silence those for now
 extra_compile_args += ['-Wno-return-type']
+
+# NOTE if you compile from source, please remove that condition.
+if tf.__version__ >= '1.4':
+    extra_link_args = ['-L' + tf.sysconfig.get_lib(), '-ltensorflow_framework']
+else:
+    extra_link_args = []
 
 if (enable_gpu):
     extra_compile_args += ['-DWARPRNNT_ENABLE_GPU']
@@ -92,7 +101,8 @@ ext = setuptools.Extension('warprnnt_tensorflow.kernels',
                            library_dirs = [warp_rnnt_path],
                            runtime_library_dirs = [os.path.realpath(warp_rnnt_path)],
                            libraries = ['warprnnt'],
-                           extra_compile_args = extra_compile_args)
+                           extra_compile_args = extra_compile_args,
+                           extra_link_args = extra_link_args)
 
 class build_tf_ext(orig_build_ext):
     def build_extensions(self):

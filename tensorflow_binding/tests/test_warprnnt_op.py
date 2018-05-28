@@ -16,9 +16,11 @@ class WarpRNNTTest(tf.test.TestCase):
         labels_t = tf.constant(labels)
         input_lengths_t = tf.constant(input_lengths)
         label_lengths_t = tf.constant(label_lengths)
+
+        if not use_gpu: acts_t = tf.nn.log_softmax(acts_t)
         costs = rnnt_loss(acts_t, labels_t, input_lengths_t, label_lengths_t, blank)
 
-        grads = tf.gradients(costs, [acts_t])
+        grads = tf.gradients(costs, [acts_t])[0]
 
         self.assertShapeEqual(expected_costs, costs)
 
@@ -53,7 +55,8 @@ class WarpRNNTTest(tf.test.TestCase):
         labels_t = tf.constant(labels)
         input_lengths_t = tf.constant(input_lengths)
         label_lengths_t = tf.constant(label_lengths)
-        costs = rnnt_loss(acts_t, labels_t, input_lengths_t, label_lengths_t, blank)
+        acts_t = tf.nn.log_softmax(acts_t) # NOTE cpu
+        costs = rnnt_loss(acts_t, labels_t, input_lengths_t, label_lengths_t)
         with self.test_session():
             print(costs.eval())
 
@@ -91,7 +94,7 @@ class WarpRNNTTest(tf.test.TestCase):
         input_lengths = np.array([4, 4], dtype=np.int32)
         label_lengths = np.array([2, 2], dtype=np.int32)
 
-        self._run_rnnt(acts, labels, input_lengths, label_lengths, expected_costs, grads, blank, use_gpu)
+        self._run_rnnt(acts, labels, input_lengths, label_lengths, expected_costs, expected_grads, 0, use_gpu)
 
     def test_multiple_batches_cpu(self):
         self._test_multiple_batches(use_gpu=False)

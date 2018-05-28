@@ -9,6 +9,7 @@ label_length = tf.placeholder(tf.int32, [None])
 
 B = 2; T = 4; U = 3; V = 6; blank = 5
 
+acts = tf.nn.log_softmax(acts)
 costs = rnnt_loss(acts, labels, input_length, label_length, blank)
 grad = tf.gradients(costs, [acts])
 

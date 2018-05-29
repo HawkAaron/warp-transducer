@@ -18,14 +18,10 @@ from warprnnt_pytorch import RNNTLoss
 from transducer_np import RNNTLoss as rnntloss
 
 parser = argparse.ArgumentParser(description='MXNet RNN Transducer Test.')
-parser.add_argument('B', type=int, default=1, help='batch size')
-parser.add_argument('T', type=int, default=300, help='time step')
-parser.add_argument('U', type=int, default=100, help='prediction step')
-parser.add_argument('V', type=int, default=60, help='vocab size')
 parser.add_argument('--np', default=False, action='store_true', help='numpy loss')
 args = parser.parse_args()
 
-fn = rnntloss() if args.np else RNNTLoss() 
+fn = rnntloss() if args.np else RNNTLoss(size_average=False) 
 
 def wrap_and_call(acts, labels):
     acts = torch.FloatTensor(acts)
@@ -38,48 +34,47 @@ def wrap_and_call(acts, labels):
     labels = autograd.Variable(torch.IntTensor(labels))
     lengths = autograd.Variable(torch.IntTensor(lengths))
     label_lengths = autograd.Variable(torch.IntTensor(label_lengths))
+    if use_cuda:
+        labels = labels.cuda()
+        lengths = lengths.cuda()
+        label_lengths = label_lengths.cuda()
 
     log_probs = nn.functional.log_softmax(acts, dim=3)
-    def grad_hook(grad):
-        log_probs.saved_grad = grad.clone()
-    log_probs.register_hook(grad_hook)
 
     costs = fn(log_probs, labels, lengths, label_lengths)
     cost = torch.sum(costs)
     cost.backward()
-    grads = log_probs.saved_grad
-    if use_cuda:
-        costs = costs.cpu()
-        grads = grads.cpu()
-    for i, a in enumerate(acts.grad.data.numpy().reshape(-1)):
-        if i % 6 == 0: print(end='\n')
-        print('{:.6f}, '.format(a), end='')
-    print()
-    # print(acts.grad.data.numpy())
-    return costs.data.numpy(), grads.data.numpy()
+    print(repr(acts.grad.data.cpu().numpy()))
+    return costs.data.cpu().numpy(), acts.grad.data.cpu().numpy()
 
 
 def small_test():
-    acts = np.array([[[0.1, 0.6, 0.1, 0.1, 0.1],
+    acts = np.array([[[[0.1, 0.6, 0.1, 0.1, 0.1],
                       [0.1, 0.1, 0.6, 0.1, 0.1],
                       [0.1, 0.1, 0.2, 0.8, 0.1]],
                      [[0.1, 0.6, 0.1, 0.1, 0.1],
                       [0.1, 0.1, 0.2, 0.1, 0.1],
-                      [0.7, 0.1, 0.2, 0.1, 0.1]]])
+                      [0.7, 0.1, 0.2, 0.1, 0.1]]]])
     labels = [[1, 2]]
-
-    acts = acts[None, ...]
 
     cost, grads = wrap_and_call(acts, labels)
     expected_cost = 4.495666
-    expected_grads = np.array([[[-0.308198071906, -0.6918019280939998, 0.0, 0.0, 0.0],
-                                [-0.308198071906, 0.0, -0.3836038561880001, 0.0, 0.0],
-                                [-0.3836038561880001, 0.0, 0.0, 0.0, 0.0]],
-                               [[0.0, -0.308198071906, 0.0, 0.0, 0.0],
-                                [0.0, 0.0, -0.6163961438119995, 0.0, 0.0],
-                                [-0.9999999999999991, 0.0, 0.0, 0.0, 0.0]]])
+    expected_grads = np.array([[[[-0.13116688, -0.3999269 ,  0.17703125,  0.17703125,
+                                0.17703125],
+                                [-0.18572757,  0.12247056, -0.18168412,  0.12247056,
+                                0.12247056],
+                                [-0.32091254,  0.06269141,  0.06928472,  0.12624499,
+                                0.06269141]],
+
+                                [[ 0.05456069, -0.21824276,  0.05456069,  0.05456069,
+                                0.05456069],
+                                [ 0.12073959,  0.12073959, -0.48295835,  0.12073959,
+                                0.12073959],
+                                [-0.6925882 ,  0.16871116,  0.18645467,  0.16871116,
+                                0.16871116]]]])
     assert np.allclose(cost, expected_cost, rtol=1e-6), \
         "small_test costs mismatch."
+    print(grads) # TODO change this exptected grad to actis.
     assert np.allclose(grads, expected_grads), \
         "small_test gradient mismatch."
 
@@ -121,38 +116,38 @@ def big_test():
               [0.6607698886038497, 0.3771277082495921, 0.3580209022231813]]]]
 
     expected_costs = [4.2806528590890736, 3.9384369822503591]
-    expected_grads = [
-            [[[-0.4322264564338117, -0.5677735435661883, 0.0],
-              [-0.36565009313836844, 0.0, -0.20212345042782007],
-              [-0.20212345042782007, 0.0, 0.0]],
+    expected_grads = [[[[-1.86843902e-01, -6.25548810e-02,  2.49398798e-01],
+                        [-2.03376666e-01,  2.02399328e-01,  9.77333169e-04],
+                        [-1.41016081e-01,  7.91234672e-02,  6.18926100e-02]],
 
-             [[-0.16521672442463506, -0.2670097320091765, 0.0],
-              [-0.3943653886107811, 0.0, -0.2382944365367636],
-              [-0.44041788696458367, 0.0, 0.0]],
+                        [[-1.15517676e-02, -8.12802389e-02,  9.28319991e-02],
+                        [-1.54257029e-01,  2.29432687e-01, -7.51756504e-02],
+                        [-2.46593088e-01,  1.46404594e-01,  1.00188486e-01]],
 
-             [[-0.052129794015740985, -0.11308693040889405, 0.0],
-              [-0.18313786985332664, 0.0, -0.3243144491663483],
-              [-0.7647323361309323, 0.0, 0.0]],
+                        [[-1.29182907e-02, -6.15932420e-02,  7.45115355e-02],
+                        [-5.59857301e-02,  2.19830811e-01, -1.63845062e-01],
+                        [-4.97626871e-01,  2.09239945e-01,  2.88386941e-01]],
 
-             [[0.0, -0.052129794015740985, 0.0],
-              [0.0, 0.0, -0.23526766386906767],
-              [-1.0, 0.0, 0.0]]],
+                        [[ 1.36048580e-02, -3.02196294e-02,  1.66147724e-02],
+                        [ 1.13924511e-01,  6.27811998e-02, -1.76705718e-01],
+                        [-6.67078257e-01,  3.67658824e-01,  2.99419403e-01]]],
 
-            [[[-0.7161424128232795, -0.2838575871767207, 0.0],
-              [-0.18382932237365335, -0.10002826480306751, 0.0],
-              [-0.10002826480306751, 0.0, 0.0]],
 
-             [[-0.41121794618117213, -0.3049244666421072, 0.0],
-              [-0.3295759402552584, -0.15917784876050195, 0.0],
-              [-0.2592061135635692, 0.0, 0.0]],
+                    [[[-3.56343776e-01, -5.53474613e-02,  4.11691219e-01],
+                        [-9.69219357e-02,  2.94591039e-02,  6.74628317e-02],
+                        [-6.35175705e-02,  2.76544970e-02,  3.58630717e-02]],
 
-             [[-0.11607642141651396, -0.29514152476465827, 0.0],
-              [-0.2865333615432337, -0.3381841034766833, 0.0],
-              [-0.5973902170402529, 0.0, 0.0]],
+                        [[-1.54499024e-01, -7.39420280e-02,  2.28441030e-01],
+                        [-1.66789949e-01, -8.78955179e-05,  1.66877866e-01],
+                        [-1.72369644e-01,  1.05565332e-01,  6.68043196e-02]],
 
-             [[0.0, -0.11607642141651396, 0.0],
-              [0.0, -0.4026097829597475, 0.0],
-              [-1.0, 0.0, 0.0]]]]
+                        [[ 2.38748826e-02, -1.18255816e-01,  9.43809375e-02],
+                        [-1.04707085e-01, -1.08934477e-01,  2.13641584e-01],
+                        [-3.69844258e-01,  1.80118099e-01,  1.89726159e-01]],
+
+                        [[ 2.57137045e-02, -7.94617534e-02,  5.37480488e-02],
+                        [ 1.22328237e-01, -2.38788679e-01,  1.16460443e-01],
+                        [-5.98686993e-01,  3.02203178e-01,  2.96483815e-01]]]]
 
     activations = np.array(activations)
     labels = [[1, 2],
@@ -163,33 +158,16 @@ def big_test():
     assert np.allclose(costs, sum(expected_costs)), \
         "big_test average costs mismatch."
 
-    assert np.allclose(grads, expected_grads), \
+    assert np.allclose(grads, expected_grads, rtol=1e-3), \
         "big_test grads for average cost mismatch."
-
-def time_test(blank=0):
-    batch_size = args.B
-    vocab_size = args.V
-    input_len = args.T
-    output_len = args.U
-    acts = np.random.rand(batch_size, input_len, output_len + 1, vocab_size)
-    labels = np.random.randint(1, vocab_size, (batch_size, output_len))
-
-    start = time.time()
-    iters = 10
-    for _ in range(iters):
-        wrap_and_call(acts, labels)
-    end = time.time()
-
-    print("Time per iteration: {:.3f}(s)".format((end-start)/iters))
-
 
 if __name__ == "__main__":
     use_cuda = False
-    # small_test()
+    small_test()
     big_test()
-    # print("CPU Tests passed!")
-    # if torch.cuda.is_available():
-    #     use_cuda = True
-    #     small_test()
-    # print("GPU Tests passed!")
-    # time_test()
+    print("CPU Tests passed!")
+    if torch.cuda.is_available():
+        use_cuda = True
+        small_test()
+        big_test()
+        print("GPU Tests passed!")

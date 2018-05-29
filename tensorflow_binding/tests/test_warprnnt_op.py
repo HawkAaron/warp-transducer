@@ -26,15 +26,7 @@ class WarpRNNTTest(tf.test.TestCase):
 
         self.assertShapeEqual(expected_grads, grads)
 
-        log_dev_placement = False
-        if not use_gpu:
-            config = tf.ConfigProto(log_device_placement=log_dev_placement,
-                                    device_count={'CPU': 0})
-        else:
-            config = tf.ConfigProto(log_device_placement=log_dev_placement,
-                                    allow_soft_placement=False)
-        
-        with self.test_session(use_gpu=use_gpu, force_gpu=use_gpu, config=config) as sess:
+        with self.test_session(use_gpu=use_gpu) as sess:
             (tf_costs, tf_grad) = sess.run([costs, grads])
             self.assertAllClose(tf_costs, expected_costs, atol=1e-6)
             self.assertAllClose(tf_grad, expected_grads, atol=1e-6)

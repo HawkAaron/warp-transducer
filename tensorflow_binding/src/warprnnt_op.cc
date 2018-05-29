@@ -168,7 +168,8 @@ class WarpRNNTOpGPU : public WarpRNNTOpBase {
 
   private:
     void set_zero(tf::Tensor* t) override {
-        cudaMemset(t->flat<float>().data(), 0, t->NumElements()*sizeof(float));
+        // here is not need
+        // cudaMemset(t->flat<float>().data(), 0, t->NumElements()*sizeof(float));
     }
 
     rnntOptions create_options(tf::OpKernelContext* ctx) override {
@@ -181,6 +182,9 @@ class WarpRNNTOpGPU : public WarpRNNTOpBase {
 };
 
 REGISTER_KERNEL_BUILDER(Name("WarpRNNT").Device(::tensorflow::DEVICE_GPU)
+                        .HostMemory("labels")
+                        .HostMemory("input_lengths")
+                        .HostMemory("label_lengths")
                         .HostMemory("costs"),
                         WarpRNNTOpGPU);
 #undef EIGEN_USE_GPU

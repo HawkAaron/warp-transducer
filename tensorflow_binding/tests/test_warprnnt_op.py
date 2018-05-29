@@ -17,8 +17,8 @@ class WarpRNNTTest(tf.test.TestCase):
         input_lengths_t = tf.constant(input_lengths)
         label_lengths_t = tf.constant(label_lengths)
 
-        if not use_gpu: acts_t = tf.nn.log_softmax(acts_t)
-        costs = rnnt_loss(acts_t, labels_t, input_lengths_t, label_lengths_t, blank)
+        logits = acts_t if use_gpu else tf.nn.log_softmax(acts_t)
+        costs = rnnt_loss(logits, labels_t, input_lengths_t, label_lengths_t, blank)
 
         grads = tf.gradients(costs, [acts_t])[0]
 

@@ -7,10 +7,10 @@ labels = tf.placeholder(tf.int32, [None, None])
 input_length = tf.placeholder(tf.int32, [None])
 label_length = tf.placeholder(tf.int32, [None])
 
-B = 2; T = 4; U = 3; V = 6; blank = 5
+B = 2; T = 4; U = 3; V = 3; blank = 0
 
-acts = tf.nn.log_softmax(acts)
-costs = rnnt_loss(acts, labels, input_length, label_length, blank)
+logits = tf.nn.log_softmax(acts)
+costs = rnnt_loss(logits, labels, input_length, label_length, blank)
 grad = tf.gradients(costs, [acts])
 
 a = np.array([[[[0.06535690384862791, 0.7875301411923206, 0.08159176605666074],

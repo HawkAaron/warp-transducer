@@ -22,10 +22,6 @@ class WarpRNNTTest(tf.test.TestCase):
 
         grads = tf.gradients(costs, [acts_t])[0]
 
-        self.assertShapeEqual(expected_costs, costs)
-
-        self.assertShapeEqual(expected_grads, grads)
-
         with self.test_session(use_gpu=use_gpu) as sess:
             (tf_costs, tf_grad) = sess.run([costs, grads])
             self.assertAllClose(tf_costs, expected_costs, atol=1e-6)

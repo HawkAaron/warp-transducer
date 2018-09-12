@@ -14,21 +14,21 @@ github.com:
 ```bash
 git clone https://github.com/tensorflow/tensorflow.git
 ```
-
+<!--
 Tell the build scripts where you have the TensorFlow source tree by
 setting the `TENSORFLOW_SRC_PATH` environment variable:
 
 ```bash
 export TENSORFLOW_SRC_PATH=/path/to/tensorflow
 ```
-
+-->
 `WARP_RNNT_PATH` should be set to the location of a built WarpRNNT
 (i.e. `libwarprnnt.so`).  This defaults to `../build`, so from within a
 new warp-rnnt clone you could build WarpRNNT like this:
 
 ```bash
 mkdir build; cd build
-cmake ..
+cmake -DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda ..
 make
 ```
 
@@ -41,7 +41,7 @@ You should now be able to use `setup.py` to install the package into
 your current Python environment:
 
 ```bash
-python setup.py install
+CUDA=/path/to/cuda python setup.py install
 ```
 
 You can run a few unit tests with `setup.py` as well if you want:

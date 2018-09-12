@@ -77,12 +77,13 @@ class WarpRNNTOpBase : public tf::OpKernel {
                                             " batch_size: ", batch_size));
         auto label_lengths_t = label_lengths->vec<int32_t>();
 
-        // check that labels are in the alphabet?
-
-        for (int b = 0; b < batch_size; b++) {
-            OP_REQUIRES(ctx, input_lengths_t(b) <= max_time,
-                        tf::errors::InvalidArgument("input_lengths(", b, ") <= ", max_time));
-        }
+        // TODO check that labels are in the alphabet?
+        // Refer to line 185, we know that
+        // Tensor input_lengths is in GPU, so cannot compare with CPU variable
+        //for (int b = 0; b < batch_size; b++) {
+        //    OP_REQUIRES(ctx, input_lengths_t(b) <= max_time,
+        //                tf::errors::InvalidArgument("input_lengths(", b, ") <= ", max_time));
+        //}
 
         tf::Tensor* costs = nullptr;
         OP_REQUIRES_OK(ctx, ctx->allocate_output("costs", input_lengths->shape(), &costs));

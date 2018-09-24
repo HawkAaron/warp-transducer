@@ -50,13 +50,13 @@ def wrap_and_call():
     output_len = args.U
     trans_acts = torch.zeros(batch_size, input_len, vocab_size).uniform_().cuda()
     pred_acts = torch.zeros(batch_size, output_len + 1, vocab_size).uniform_().cuda()
-    labels = torch.zeros(batch_size, output_len).uniform_(1, vocab_size-1).int()
+    labels = torch.zeros(batch_size, output_len).uniform_(1, vocab_size-1).int().cuda()
     
     trans_acts = autograd.Variable(trans_acts, requires_grad=True)
     pred_acts = autograd.Variable(pred_acts, requires_grad=True)
     labels = autograd.Variable(labels)
-    lengths = autograd.Variable(torch.IntTensor([input_len] * batch_size))
-    label_lengths = autograd.Variable(torch.IntTensor([output_len - 1] * batch_size))
+    lengths = autograd.Variable(torch.IntTensor([input_len] * batch_size).cuda())
+    label_lengths = autograd.Variable(torch.IntTensor([output_len - 1] * batch_size).cuda())
 
     gpu_memory = batch_size * (input_len + (output_len + 1)) * vocab_size * 4
 

@@ -1,20 +1,26 @@
 import torch
 import warprnnt_pytorch as warp_rnnt
 from torch.autograd import Function
-from torch.autograd import Variable
 from torch.nn import Module
-from torch.nn.modules.loss import _assert_no_grad
 
 from ._warp_rnnt import *
+
+def _assert_no_grad(tensor):
+    assert not tensor.requires_grad, \
+        "gradients only computed for acts - please " \
+        "mark other tensors as not requiring gradients"
 
 
 class _RNNT(Function):
     @staticmethod
     def forward(ctx, acts, labels, act_lens, label_lens, size_average, blank_label):
         is_cuda = True if acts.is_cuda else False
+        acts = acts.contiguous()
+        labels = labels.contiguous()
+        act_lens = act_lens.contiguous()
+        label_lens = label_lens.contiguous()
         loss_func = warp_rnnt.gpu_rnnt if is_cuda else warp_rnnt.cpu_rnnt
-        grads = torch.zeros_like(acts) if ctx.requires_grad else torch.zeros(0)
-        if is_cuda: grads = grads.cuda()
+        grads = torch.zeros_like(acts) if ctx.requires_grad else torch.zeros(0, device=acts.device)
         minibatch_size = acts.size(0)
         costs = torch.zeros(minibatch_size)
         loss_func(acts,
@@ -33,7 +39,7 @@ class _RNNT(Function):
             grads = grads / minibatch_size
             costs = costs / minibatch_size
 
-        ctx.grads = Variable(grads)
+        ctx.grads = grads
         return costs
 
     @staticmethod
@@ -45,10 +51,10 @@ class RNNTLoss(Module):
     """
     Parameters:
         size_average (bool): normalize the loss by the batch size
-            (default: `True`)
+            (default: `False`)
         blank_label (int): default 0
     """
-    def __init__(self, size_average=True, blank_label=0):
+    def __init__(self, size_average=False, blank_label=0):
         super(RNNTLoss, self).__init__()
         self.rnnt = _RNNT.apply
         self.size_average = size_average

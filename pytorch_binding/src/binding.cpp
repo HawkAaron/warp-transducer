@@ -30,7 +30,7 @@ extern "C" int cpu_rnnt(THFloatTensor *trans_acts,
     float *trans_grad_ptr = NULL; // this will trigger the score forward code path
     float *pred_grad_ptr = NULL;
 
-    if (trans_grad->storage && pred_grad->storage) {
+    if (THFloatTensor_storage(trans_grad) && THFloatTensor_storage(pred_grad)) {
         trans_grad_ptr = THFloatTensor_data(trans_grad);
         pred_grad_ptr = THFloatTensor_data(pred_grad);
     }
@@ -40,10 +40,10 @@ extern "C" int cpu_rnnt(THFloatTensor *trans_acts,
     int *label_lengths_ptr = THIntTensor_data(label_lengths);
     float *costs_ptr = THFloatTensor_data(costs);
 
-    int maxT = trans_acts->size[1];
-    int maxU = pred_acts->size[1];
-    int minibatch_size = trans_acts->size[0];
-    int alphabet_size = trans_acts->size[2];
+    int maxT = THFloatTensor_size(trans_acts, 1);
+    int maxU = THFloatTensor_size(pred_acts, 1);
+    int minibatch_size = THFloatTensor_size(trans_acts, 0);
+    int alphabet_size = THFloatTensor_size(trans_acts, 2);
 
     rnntOptions options;
     memset(&options, 0, sizeof(options));
@@ -89,7 +89,7 @@ extern "C" int gpu_rnnt(THCudaTensor *trans_acts,
     float *trans_grad_ptr = NULL; // this will trigger the score forward code path
     float *pred_grad_ptr = NULL;
 
-    if (trans_grad->storage && pred_grad->storage) {
+    if (THCudaTensor_storage(state, trans_grad) && THCudaTensor_storage(state, pred_grad)) {
         trans_grad_ptr = THCudaTensor_data(state, trans_grad);
         pred_grad_ptr = THCudaTensor_data(state, pred_grad);
     }
@@ -99,10 +99,10 @@ extern "C" int gpu_rnnt(THCudaTensor *trans_acts,
     int *label_lengths_ptr = THIntTensor_data(label_lengths);
     float *costs_ptr = THFloatTensor_data(costs);
 
-    int maxT = trans_acts->size[1];
-    int maxU = pred_acts->size[1];
-    int minibatch_size = trans_acts->size[0];
-    int alphabet_size = trans_acts->size[2];
+    int maxT = THFloatTensor_size(trans_acts, 1);
+    int maxU = THFloatTensor_size(pred_acts, 1);
+    int minibatch_size = THFloatTensor_size(trans_acts, 0);
+    int alphabet_size = THFloatTensor_size(trans_acts, 2);
 
     rnntOptions options;
     memset(&options, 0, sizeof(options));
@@ -116,8 +116,7 @@ extern "C" int gpu_rnnt(THCudaTensor *trans_acts,
     get_workspace_size(maxT, maxU, minibatch_size,
                        true, &gpu_size_bytes);
 
-    void* gpu_workspace;
-    THCudaMalloc(state, &gpu_workspace, gpu_size_bytes);
+    void* gpu_workspace = THCudaMalloc(state, gpu_size_bytes);
 
     compute_rnnt_loss(trans_acts_ptr, pred_acts_ptr,
                      trans_grad_ptr, pred_grad_ptr,

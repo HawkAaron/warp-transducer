@@ -3,7 +3,12 @@ import torch
 from torch.autograd import Function, Variable
 from torch.nn import Module
 import torch.nn.functional as F
-from torch.nn.modules.loss import _assert_no_grad
+
+def _assert_no_grad(tensor):
+    assert not tensor.requires_grad, \
+        "gradients only computed for acts - please " \
+        "mark other tensors as not requiring gradients"
+
 
 def log_softmax(x, axis):
     x = (x - x.max(axis=axis, keepdims=True))

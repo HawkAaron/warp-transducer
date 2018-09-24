@@ -1,12 +1,14 @@
 import torch
 import warprnnt_pytorch as warp_rnnt
 from torch.autograd import Function
-from torch.autograd import Variable
 from torch.nn import Module
-from torch.nn.modules.loss import _assert_no_grad
 
 from ._warp_rnnt import *
 
+def _assert_no_grad(tensor):
+    assert not tensor.requires_grad, \
+        "gradients only computed for acts - please " \
+        "mark other tensors as not requiring gradients"
 
 class _RNNT(Function):
     @staticmethod
@@ -18,20 +20,19 @@ class _RNNT(Function):
             labels = torch.cat([labels[i, :j] for i, j in enumerate(label_lens)])
         trans_acts = trans_acts.contiguous()
         pred_acts = pred_acts.contiguous()
+        labels = labels.contiguous()
         loss_func = warp_rnnt.gpu_rnnt if is_cuda else warp_rnnt.cpu_rnnt
 
-        trans_grads = torch.zeros_like(trans_acts) if ctx.requires_grad else torch.zeros(0)
-        pred_grads = torch.zeros_like(pred_acts) if ctx.requires_grad else torch.zeros(0)
-        if is_cuda:
-            trans_grads = trans_grads.cuda()
-            pred_grads = pred_grads.cuda()
+        device = trans_acts.device
+        trans_grads = torch.zeros_like(trans_acts) if ctx.requires_grad else torch.zeros(0, device=device)
+        pred_grads = torch.zeros_like(pred_acts) if ctx.requires_grad else torch.zeros(0, device=device)
 
         minibatch_size = trans_acts.size(0)
-        costs = torch.zeros(minibatch_size).cpu()
+        costs = torch.zeros(minibatch_size)
         loss_func(trans_acts, pred_acts,
-                  labels.int().cpu(),
-                  act_lens.int().cpu(),
-                  label_lens.int().cpu(),
+                  labels,
+                  act_lens,
+                  label_lens,
                   costs,
                   trans_grads, pred_grads,
                   blank_label,
@@ -39,16 +40,13 @@ class _RNNT(Function):
 
         costs = torch.FloatTensor([costs.sum()])
 
-        # if is_cuda:
-        #     costs = costs.cuda()
-
         if size_average:
             # Compute the avg. log-probability per batch sample.
             trans_grads = trans_grads / minibatch_size
             pred_grads = pred_grads / minibatch_size
             costs = costs / minibatch_size
 
-        ctx.grads = Variable(trans_grads), Variable(pred_grads)
+        ctx.grads = trans_grads, pred_grads
         return costs
 
     @staticmethod

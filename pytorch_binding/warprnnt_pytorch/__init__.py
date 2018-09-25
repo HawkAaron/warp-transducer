@@ -36,8 +36,8 @@ class _RNNT(Function):
 
         if size_average:
             # Compute the avg. log-probability per batch sample.
-            grads = grads / minibatch_size
-            costs = costs / minibatch_size
+            grads /= minibatch_size
+            costs /= minibatch_size
 
         ctx.grads = grads
         return costs

@@ -9,6 +9,7 @@ import setuptools
 import sys
 import unittest
 from setuptools.command.build_ext import build_ext as orig_build_ext
+from distutils.version import LooseVersion
 
 # We need to import tensorflow to find where its include directory is.
 try:
@@ -26,12 +27,6 @@ if "CUDA_HOME" not in os.environ:
 else:
     enable_gpu = True
 
-
-if "TENSORFLOW_SRC_PATH" not in os.environ:
-    print("Please define the TENSORFLOW_SRC_PATH environment variable.\n"
-          "This should be a path to the Tensorflow source directory.",
-          file=sys.stderr)
-    sys.exit(1)
 
 if platform.system() == 'Darwin':
     lib_ext = ".dylib"
@@ -51,22 +46,25 @@ if not os.path.exists(os.path.join(warp_rnnt_path, "libwarprnnt"+lib_ext)):
 root_path = os.path.realpath(os.path.dirname(__file__))
 
 tf_include = tf.sysconfig.get_include()
-tf_src_dir = os.environ["TENSORFLOW_SRC_PATH"]
+tf_src_dir = tf.sysconfig.get_lib()
 tf_includes = [tf_include, tf_src_dir]
 warp_rnnt_includes = [os.path.join(root_path, '../include')]
 include_dirs = tf_includes + warp_rnnt_includes
 
-if tf.__version__ >= '1.4':
-    include_dirs += [os.path.join(tf_include, '../../external/nsync/public')]
+if LooseVersion(tf.__version__) >= LooseVersion('1.4'):
+    nsync_dir = '../../external/nsync/public'
+    if LooseVersion(tf.__version__) >= LooseVersion('1.10'):
+        nsync_dir = 'external/nsync/public'
+    include_dirs += [os.path.join(tf_include, nsync_dir)]
 
 extra_compile_args = ['-std=c++11', '-fPIC', '-D_GLIBCXX_USE_CXX11_ABI=0']
 # current tensorflow code triggers return type errors, silence those for now
 extra_compile_args += ['-Wno-return-type']
 
 extra_link_args = []
-if tf.__version__ >= '1.4':
+if LooseVersion(tf.__version__) >= LooseVersion('1.4'):
     if os.path.exists(os.path.join(tf_src_dir, 'libtensorflow_framework.so')):
-        extra_link_args = ['-L' + tf.sysconfig.get_lib(), '-ltensorflow_framework']
+        extra_link_args = ['-L' + tf_src_dir, '-ltensorflow_framework']
 
 if (enable_gpu):
     extra_compile_args += ['-DWARPRNNT_ENABLE_GPU']

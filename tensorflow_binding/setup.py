@@ -27,14 +27,6 @@ if "CUDA_HOME" not in os.environ:
 else:
     enable_gpu = True
 
-'''
-if "TENSORFLOW_SRC_PATH" not in os.environ:
-    print("Please define the TENSORFLOW_SRC_PATH environment variable.\n"
-          "This should be a path to the Tensorflow source directory.",
-          file=sys.stderr)
-    sys.exit(1)
-'''
-
 if platform.system() == 'Darwin':
     lib_ext = ".dylib"
 else:
@@ -59,7 +51,10 @@ warp_rnnt_includes = [os.path.join(root_path, '../include')]
 include_dirs = tf_includes + warp_rnnt_includes
 
 if LooseVersion(tf.__version__) >= LooseVersion('1.4'):
-    include_dirs += [os.path.join(tf_include, 'external/nsync/public')]
+    nsync_dir = '../../external/nsync/public'
+    if LooseVersion(tf.__version__) >= LooseVersion('1.10'):
+        nsync_dir = 'external/nsync/public'
+    include_dirs += [os.path.join(tf_include, nsync_dir)]
 
 extra_compile_args = ['-std=c++11', '-fPIC', '-D_GLIBCXX_USE_CXX11_ABI=0']
 # current tensorflow code triggers return type errors, silence those for now

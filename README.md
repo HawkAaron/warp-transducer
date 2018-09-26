@@ -49,7 +49,7 @@ create a build directory:
 mkdir build
 cd build
 ```
-if you have a non standard CUDA install `export CUDA_HOME=/path_to_cuda` so that CMake detects CUDA.
+if you have a non standard CUDA install, add `-DCUDA_TOOLKIT_ROOT_DIR=/path/to/cuda` option to `cmake` so that CMake detects CUDA.
 
 Run cmake and build:
 ```bash

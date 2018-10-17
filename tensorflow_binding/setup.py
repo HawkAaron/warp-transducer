@@ -56,7 +56,20 @@ if LooseVersion(tf.__version__) >= LooseVersion('1.4'):
         nsync_dir = 'external/nsync/public'
     include_dirs += [os.path.join(tf_include, nsync_dir)]
 
-extra_compile_args = ['-std=c++11', '-fPIC', '-D_GLIBCXX_USE_CXX11_ABI=0']
+if os.getenv("TF_CXX11_ABI") is not None:
+    TF_CXX11_ABI = os.getenv("TF_CXX11_ABI")
+else:
+    warnings.warn("Assuming tensorflow was compiled without C++11 ABI. "
+                  "It is generally true if you are using binary pip package. "
+                  "If you compiled tensorflow from source with gcc >= 5 and didn't set "
+                  "-D_GLIBCXX_USE_CXX11_ABI=0 during compilation, you need to set "
+                  "environment variable TF_CXX11_ABI=1 when compiling this bindings. "
+                  "Also be sure to touch some files in src to trigger recompilation. "
+                  "Also, you need to set (or unsed) this environment variable if getting "
+                  "undefined symbol: _ZN10tensorflow... errors")
+    TF_CXX11_ABI = "0"
+
+extra_compile_args = ['-std=c++11', '-fPIC', '-D_GLIBCXX_USE_CXX11_ABI=' + TF_CXX11_ABI]
 # current tensorflow code triggers return type errors, silence those for now
 extra_compile_args += ['-Wno-return-type']
 

@@ -64,6 +64,6 @@ The WarpRNNT op is available via the `warprnnt_tensorflow.rnnt_loss` function:
 costs = warprnnt_tensorflow.rnnt_loss(acts, labels, label_lengths, input_lengths)
 ```
 
-The `acts` is a 3 dimensional Tensor, `labels`
+The `acts` is a 4 dimensional Tensor, `labels`
 is 2 dimensinal Tensor, and all the others are single dimension Tensors.
 See the main WarpRNNT documentation for more information.

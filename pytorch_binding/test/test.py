@@ -23,28 +23,30 @@ args = parser.parse_args()
 
 fn = rnntloss() if args.np else RNNTLoss(size_average=False) 
 
+gpu = 1
 def wrap_and_call(acts, labels):
     acts = torch.FloatTensor(acts)
     if use_cuda:
-        acts = acts.cuda()
-    acts = autograd.Variable(acts, requires_grad=True)
+        acts = acts.cuda(gpu)
+    #acts = autograd.Variable(acts, requires_grad=True)
+    acts.requires_grad = True
 
     lengths = [acts.shape[1]] * acts.shape[0]
     label_lengths = [len(l) for l in labels]
-    labels = autograd.Variable(torch.IntTensor(labels))
-    lengths = autograd.Variable(torch.IntTensor(lengths))
-    label_lengths = autograd.Variable(torch.IntTensor(label_lengths))
+    labels = torch.IntTensor(labels)
+    lengths = torch.IntTensor(lengths)
+    label_lengths = torch.IntTensor(label_lengths)
     if use_cuda:
-        labels = labels.cuda()
-        lengths = lengths.cuda()
-        label_lengths = label_lengths.cuda()
+        labels = labels.cuda(gpu)
+        lengths = lengths.cuda(gpu)
+        label_lengths = label_lengths.cuda(gpu)
 
     log_probs = nn.functional.log_softmax(acts, dim=3)
 
     costs = fn(log_probs, labels, lengths, label_lengths)
     cost = torch.sum(costs)
     cost.backward()
-    print(repr(acts.grad.data.cpu().numpy()))
+    # print(repr(acts.grad.data.cpu().numpy()))
     return costs.data.cpu().numpy(), acts.grad.data.cpu().numpy()
 
 
@@ -74,7 +76,6 @@ def small_test():
                                 0.16871116]]]])
     assert np.allclose(cost, expected_cost, rtol=1e-6), \
         "small_test costs mismatch."
-    print(grads) # TODO change this exptected grad to actis.
     assert np.allclose(grads, expected_grads), \
         "small_test gradient mismatch."
 

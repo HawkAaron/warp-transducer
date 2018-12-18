@@ -116,6 +116,8 @@ extern "C" int gpu_rnnt(THCudaTensor *trans_acts,
     get_workspace_size(maxT, maxU, minibatch_size,
                        true, &gpu_size_bytes);
 
+    cudaSetDevice(THCudaTensor_getDevice(state, trans_acts));
+
     void* gpu_workspace = THCudaMalloc(state, gpu_size_bytes);
 
     compute_rnnt_loss(trans_acts_ptr, pred_acts_ptr,

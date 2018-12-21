@@ -1,47 +1,42 @@
 #include <iostream>
-#include <vector>
-
 #include <numeric>
 
+#include <torch/extension.h>
 #include "rnnt.h"
 
 #ifdef WARPRNNT_ENABLE_GPU
     #include "THC.h"
-    #include "THCTensor.h"
-    #include "detail/reduce.h"
     extern THCState* state;
-#else
-    #include "TH.h"
 #endif
 
-extern "C" int cpu_rnnt(THFloatTensor *acts,
-                        THIntTensor *labels,
-                        THIntTensor *input_lengths,
-                        THIntTensor *label_lengths,
-                        THFloatTensor *costs,
-                        THFloatTensor *grads,
-                        int blank_label,
-                        int num_threads) {
+int cpu_rnnt(torch::Tensor acts,
+            torch::Tensor labels,
+            torch::Tensor input_lengths,
+            torch::Tensor label_lengths,
+            torch::Tensor costs,
+            torch::Tensor grads,
+            int blank_label,
+            int num_threads) {
 
-    float *acts_ptr = THFloatTensor_data(acts);
+    float *acts_ptr = (float*) acts.data_ptr();
     float *grads_ptr = NULL; // this will trigger the score forward code path
-    if (THFloatTensor_storage(grads)) 
-        grads_ptr = THFloatTensor_data(grads);
+    if (grads.storage())
+        grads_ptr = (float*) grads.data_ptr();
 
-    int *input_lengths_ptr = THIntTensor_data(input_lengths);
-    int *labels_ptr = THIntTensor_data(labels);
-    int *label_lengths_ptr = THIntTensor_data(label_lengths);
-    float *costs_ptr = THFloatTensor_data(costs);
+    int *input_lengths_ptr = (int*) input_lengths.data_ptr();
+    int *labels_ptr = (int*) labels.data_ptr();
+    int *label_lengths_ptr = (int*) label_lengths.data_ptr();
+    float *costs_ptr = (float*) costs.data_ptr();
 
-    int maxT = THFloatTensor_size(acts, 0);
-    int maxU = THFloatTensor_size(acts, 1);
-    int minibatch_size = THFloatTensor_size(acts, 2);
-    int alphabet_size = THFloatTensor_size(acts, 3);
+    int maxT = acts.size(0);
+    int maxU = acts.size(1);
+    int minibatch_size = acts.size(2);
+    int alphabet_size = acts.size(3);
 
 	if (true) {
-		minibatch_size = THFloatTensor_size(acts, 0);
-		maxT = THFloatTensor_size(acts, 1);
-		maxU = THFloatTensor_size(acts, 2);
+		minibatch_size = acts.size(0);
+		maxT = acts.size(1);
+		maxU = acts.size(2);
 	}
 
     rnntOptions options;
@@ -72,29 +67,29 @@ extern "C" int cpu_rnnt(THFloatTensor *acts,
     return 1;
 }
 #ifdef WARPRNNT_ENABLE_GPU
-extern "C" int gpu_rnnt(THCudaTensor *acts,
-                        THCudaIntTensor *labels,
-                        THCudaIntTensor *input_lengths,
-                        THCudaIntTensor *label_lengths,
-                        THFloatTensor *costs,
-                        THCudaTensor *grads,
-                        int blank_label,
-                        int num_threads) {
+int gpu_rnnt(torch::Tensor acts,
+            torch::Tensor labels,
+            torch::Tensor input_lengths,
+            torch::Tensor label_lengths,
+            torch::Tensor costs,
+            torch::Tensor grads,
+            int blank_label,
+            int num_threads) {
 
-    float *acts_ptr = THCudaTensor_data(state, acts);
+    float *acts_ptr = (float*) acts.data_ptr();
     float *grads_ptr = NULL; // this will trigger the score forward code path
-    if (THCudaTensor_storage(state, grads))
-        grads_ptr = THCudaTensor_data(state, grads);
+    if (grads.storage())
+        grads_ptr = (float*) grads.data_ptr();
 
-    int *input_lengths_ptr = THCudaIntTensor_data(state, input_lengths);
-    int *labels_ptr = THCudaIntTensor_data(state, labels);
-    int *label_lengths_ptr = THCudaIntTensor_data(state, label_lengths);
-    float *costs_ptr = THFloatTensor_data(costs);
+    int *input_lengths_ptr = (int*) input_lengths.data_ptr();
+    int *labels_ptr = (int*) labels.data_ptr();
+    int *label_lengths_ptr = (int*) label_lengths.data_ptr();
+    float *costs_ptr = (float*) costs.data_ptr();
 
-    int minibatch_size = THFloatTensor_size(acts, 0);
-    int maxT = THFloatTensor_size(acts, 1);
-    int maxU = THFloatTensor_size(acts, 2);
-    int alphabet_size = THFloatTensor_size(acts, 3);
+    int minibatch_size = acts.size(0);
+    int maxT = acts.size(1);
+    int maxU = acts.size(2);
+    int alphabet_size = acts.size(3);
 
     rnntOptions options;
     memset(&options, 0, sizeof(options));
@@ -102,7 +97,7 @@ extern "C" int gpu_rnnt(THCudaTensor *acts,
     options.maxU = maxU;
     options.blank_label = blank_label;
     options.loc = RNNT_GPU;
-    options.stream = THCState_getCurrentStream(state);
+    options.stream = at::cuda::getCurrentCUDAStream();
     options.num_threads = num_threads;
 #if defined(RNNT_DISABLE_OMP) || defined(APPLE)
     // have to use at least one
@@ -113,7 +108,7 @@ extern "C" int gpu_rnnt(THCudaTensor *acts,
     get_workspace_size(maxT, maxU, minibatch_size,
                        true, &gpu_size_bytes);
 
-    cudaSetDevice(THCudaTensor_getDevice(state, acts));
+    cudaSetDevice(acts.get_device());
 
     void* gpu_workspace = THCudaMalloc(state, gpu_size_bytes);
 
@@ -127,3 +122,10 @@ extern "C" int gpu_rnnt(THCudaTensor *acts,
     return 1;
 }
 #endif
+
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+    m.def("cpu_rnnt", &cpu_rnnt, "RNNT CPU version");
+#ifdef WARPRNNT_ENABLE_GPU
+    m.def("gpu_rnnt", &gpu_rnnt, "RNNT GPU version");
+#endif
+}

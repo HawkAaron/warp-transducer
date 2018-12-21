@@ -3,6 +3,7 @@
 
 #include <numeric>
 
+#include <torch/extension.h>
 #include "rnnt.h"
 
 #ifdef WARPRNNT_ENABLE_GPU
@@ -14,36 +15,36 @@
     #include "TH.h"
 #endif
 
-extern "C" int cpu_rnnt(THFloatTensor *trans_acts,
-                        THFloatTensor *pred_acts,
-                        THIntTensor *labels,
-                        THIntTensor *input_lengths,
-                        THIntTensor *label_lengths,
-                        THFloatTensor *costs,
-                        THFloatTensor *trans_grad,
-                        THFloatTensor *pred_grad,
-                        int blank_label,
-                        int num_threads) {
+int cpu_rnnt(torch::Tensor trans_acts,
+            torch::Tensor pred_acts,
+            torch::Tensor labels,
+            torch::Tensor input_lengths,
+            torch::Tensor label_lengths,
+            torch::Tensor costs,
+            torch::Tensor trans_grad,
+            torch::Tensor pred_grad,
+            int blank_label,
+            int num_threads) {
 
-    float *trans_acts_ptr = THFloatTensor_data(trans_acts);
-    float *pred_acts_ptr = THFloatTensor_data(pred_acts);
+    float *trans_acts_ptr = (float*) trans_acts.data_ptr();
+    float *pred_acts_ptr = (float*) pred_acts.data_ptr();
     float *trans_grad_ptr = NULL; // this will trigger the score forward code path
     float *pred_grad_ptr = NULL;
 
-    if (THFloatTensor_storage(trans_grad) && THFloatTensor_storage(pred_grad)) {
-        trans_grad_ptr = THFloatTensor_data(trans_grad);
-        pred_grad_ptr = THFloatTensor_data(pred_grad);
+    if (trans_grad.storage() && pred_grad.storage()) {
+        trans_grad_ptr = (float*) trans_grad.data_ptr();
+        pred_grad_ptr = (float*) pred_grad.data_ptr();
     }
 
-    int *input_lengths_ptr = THIntTensor_data(input_lengths);
-    int *labels_ptr = THIntTensor_data(labels);
-    int *label_lengths_ptr = THIntTensor_data(label_lengths);
-    float *costs_ptr = THFloatTensor_data(costs);
+    int *input_lengths_ptr = (int*) input_lengths.data_ptr();
+    int *labels_ptr = (int*) labels.data_ptr();
+    int *label_lengths_ptr = (int*) label_lengths.data_ptr();
+    float *costs_ptr = (float*) costs.data_ptr();
 
-    int maxT = THFloatTensor_size(trans_acts, 1);
-    int maxU = THFloatTensor_size(pred_acts, 1);
-    int minibatch_size = THFloatTensor_size(trans_acts, 0);
-    int alphabet_size = THFloatTensor_size(trans_acts, 2);
+    int maxT = trans_acts.size(1);
+    int maxU = pred_acts.size(1);
+    int minibatch_size = trans_acts.size(0);
+    int alphabet_size = trans_acts.size(2);
 
     rnntOptions options;
     memset(&options, 0, sizeof(options));
@@ -73,36 +74,36 @@ extern "C" int cpu_rnnt(THFloatTensor *trans_acts,
     return 1;
 }
 #ifdef WARPRNNT_ENABLE_GPU
-extern "C" int gpu_rnnt(THCudaTensor *trans_acts,
-                        THCudaTensor *pred_acts,
-                        THIntTensor *labels,
-                        THIntTensor *input_lengths,
-                        THIntTensor *label_lengths,
-                        THFloatTensor *costs,
-                        THCudaTensor *trans_grad,
-                        THCudaTensor *pred_grad,
-                        int blank_label,
-                        int num_threads=0) { // not used in GPU version
+int gpu_rnnt(torch::Tensor trans_acts,
+            torch::Tensor pred_acts,
+            torch::Tensor labels,
+            torch::Tensor input_lengths,
+            torch::Tensor label_lengths,
+            torch::Tensor costs,
+            torch::Tensor trans_grad,
+            torch::Tensor pred_grad,
+            int blank_label,
+            int num_threads=0) { // not used in GPU version
 
-    float *trans_acts_ptr = THCudaTensor_data(state, trans_acts);
-    float *pred_acts_ptr = THCudaTensor_data(state, pred_acts);
+    float *trans_acts_ptr = (float*) trans_acts.data_ptr();
+    float *pred_acts_ptr = (float*) pred_acts.data_ptr();
     float *trans_grad_ptr = NULL; // this will trigger the score forward code path
     float *pred_grad_ptr = NULL;
 
-    if (THCudaTensor_storage(state, trans_grad) && THCudaTensor_storage(state, pred_grad)) {
-        trans_grad_ptr = THCudaTensor_data(state, trans_grad);
-        pred_grad_ptr = THCudaTensor_data(state, pred_grad);
+    if (trans_grad.storage() && pred_grad.storage()) {
+        trans_grad_ptr = (float*) trans_grad.data_ptr();
+        pred_grad_ptr = (float*) pred_grad.data_ptr();
     }
 
-    int *input_lengths_ptr = THIntTensor_data(input_lengths);
-    int *labels_ptr = THIntTensor_data(labels);
-    int *label_lengths_ptr = THIntTensor_data(label_lengths);
-    float *costs_ptr = THFloatTensor_data(costs);
+    int *input_lengths_ptr = (int*) input_lengths.data_ptr();
+    int *labels_ptr = (int*) labels.data_ptr();
+    int *label_lengths_ptr = (int*) label_lengths.data_ptr();
+    float *costs_ptr = (float*) costs.data_ptr();
 
-    int maxT = THFloatTensor_size(trans_acts, 1);
-    int maxU = THFloatTensor_size(pred_acts, 1);
-    int minibatch_size = THFloatTensor_size(trans_acts, 0);
-    int alphabet_size = THFloatTensor_size(trans_acts, 2);
+    int maxT = trans_acts.size(1);
+    int maxU = pred_acts.size(1);
+    int minibatch_size = trans_acts.size(0);
+    int alphabet_size = trans_acts.size(2);
 
     rnntOptions options;
     memset(&options, 0, sizeof(options));
@@ -110,13 +111,13 @@ extern "C" int gpu_rnnt(THCudaTensor *trans_acts,
     options.maxU = maxU;
     options.blank_label = blank_label;
     options.loc = RNNT_GPU;
-    options.stream = THCState_getCurrentStream(state);
+    options.stream = at::cuda::getCurrentCUDAStream();
 
     size_t gpu_size_bytes;
     get_workspace_size(maxT, maxU, minibatch_size,
                        true, &gpu_size_bytes);
 
-    cudaSetDevice(THCudaTensor_getDevice(state, trans_acts));
+    cudaSetDevice(trans_acts.get_device());
 
     void* gpu_workspace = THCudaMalloc(state, gpu_size_bytes);
 
@@ -131,3 +132,10 @@ extern "C" int gpu_rnnt(THCudaTensor *trans_acts,
     return 1;
 }
 #endif
+
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+    m.def("cpu_rnnt", &cpu_rnnt, "RNNT CPU version");
+#ifdef WARPRNNT_ENABLE_GPU
+    m.def("gpu_rnnt", &gpu_rnnt, "RNNT GPU version");
+#endif
+}

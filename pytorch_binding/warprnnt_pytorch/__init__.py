@@ -3,7 +3,7 @@ import warprnnt_pytorch as warp_rnnt
 from torch.autograd import Function
 from torch.nn import Module
 
-from ._warp_rnnt import *
+from .warp_rnnt import *
 
 def _assert_no_grad(tensor):
     assert not tensor.requires_grad, \

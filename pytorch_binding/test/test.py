@@ -90,6 +90,7 @@ def big_test():
                                 0.8725375533103943 ,0.06845909357070923 ,0.7426746487617493 ,0.7473852038383484 ,0.6735857129096985 ,0.8149459958076477 ,
                                 0.6253803968429565 ,0.5640403628349304 ,0.5929765701293945 ,0.6260771751403809 ,0.23223882913589478 ,0.04109394550323486]
                                 ).view(T, B, V)
+    trans_acts = trans_acts.transpose(0, 1).contiguous()
     trans_acts.requires_grad = True
 
     pred_acts = torch.Tensor([0.06116640567779541 ,0.14563453197479248 ,0.5638840198516846 ,0.6632290482521057 ,0.19838422536849976 ,0.1820780634880066 ,
@@ -99,6 +100,7 @@ def big_test():
                                 0.7007454037666321 ,0.6552602648735046 ,0.5205059051513672 ,0.30149775743484497 ,0.605181872844696 ,0.1901898980140686 ,
                                 0.9128827452659607 ,0.6805384159088135 ,0.019013822078704834 ,0.8405444622039795 ,0.5298664569854736 ,0.27262967824935913]
                                 ).view(U, B, V)
+    pred_acts = pred_acts.transpose(0, 1).contiguous()
     pred_acts.requires_grad = True
 
     print('trans_acts')
@@ -113,7 +115,7 @@ def big_test():
     act_length = torch.autograd.Variable(torch.IntTensor([T] * B))
     label_length = torch.autograd.Variable(torch.IntTensor([U-1] * B))
 
-    loss = RNNTLoss(blank_label=blank, batch_first=False)(trans_acts, pred_acts, label, act_length, label_length)
+    loss = RNNTLoss(blank=blank, reduction='sum')(trans_acts, pred_acts, label, act_length, label_length)
     loss.backward()
 
     expected_cost = 9.8610 + 8.7003;
@@ -126,16 +128,18 @@ def big_test():
                                     0.29537156224250793 ,-0.274471253156662 ,0.2312944084405899 ,0.18443721532821655 ,0.16433767974376678 ,-0.6009695529937744 ,
                                     0.385039746761322 ,0.06576273590326309 ,-0.18127907812595367 ,0.2354261875152588 ,0.28227531909942627 ,-0.7872248888015747 ,
                                     0.4264937937259674 ,-0.4397970736026764 ,0.22451627254486084 ,0.4020277261734009 ,0.20442542433738708 ,-0.8176661133766174]).reshape(T, B, V)
+    expected_trans_grads = expected_trans_grads.transpose(1, 0, 2)
     expected_pred_grads = np.array([0.2336210012435913 ,-0.7242842316627502 ,0.49153390526771545 ,0.4382175803184509 ,0.2350836545228958 ,-0.6741719245910645 ,
                                     0.5328136086463928 ,-0.7057985663414001 ,0.3393358588218689 ,0.2234761267900467 ,0.5142948627471924 ,-0.9041219353675842 ,
                                     0.5180250406265259 ,0.26190635561943054 ,-0.7572638988494873 ,0.29955601692199707 ,0.3859791159629822 ,-0.7082027196884155 ,
                                     0.4035489857196808 ,-0.5864231586456299 ,0.24028921127319336 ,0.3576064705848694 ,0.20584842562675476 ,-0.6208699345588684 ,
                                     0.4579349160194397 ,0.31794747710227966 ,0.35017895698547363 ,0.26747676730155945 ,0.3649044632911682 ,-1.7584426403045654 ,
                                     0.38415825366973877 ,0.30689966678619385 ,0.15302574634552002 ,0.3225018382072449 ,0.18354131281375885 ,-1.35012686252594]).reshape(U, B, V)
+    expected_pred_grads = expected_pred_grads.transpose(1, 0, 2)
     print('trans_grads')
-    show(expected_trans_grads.transpose(1, 0, 2))
+    show(expected_trans_grads)
     print('pred_grads')
-    show(expected_pred_grads.transpose(1, 0, 2))
+    show(expected_pred_grads)
     assert np.allclose(loss.data.numpy(), expected_cost), \
         "costs mismath."
     assert np.allclose(trans_acts.grad.data.numpy(), expected_trans_grads), \

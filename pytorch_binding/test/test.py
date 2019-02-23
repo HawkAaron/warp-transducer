@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser(description='MXNet RNN Transducer Test.')
 parser.add_argument('--np', default=False, action='store_true', help='numpy loss')
 args = parser.parse_args()
 
-fn = rnntloss() if args.np else RNNTLoss(size_average=False) 
+fn = rnntloss() if args.np else RNNTLoss(reduction='sum')
 
 gpu = 1
 def wrap_and_call(acts, labels):

@@ -20,6 +20,15 @@ include_directories(include)
 FIND_PACKAGE(CUDA)
 MESSAGE(STATUS "cuda found ${CUDA_FOUND}")
 
+option(USE_NAIVE_KERNEL "use naive alpha-beta kernel" OFF)
+option(DEBUG "output kernel time" OFF)
+if (USE_NAIVE_KERNEL)
+    add_definitions(-DUSE_NAIVE_KERNEL)
+endif()
+if (DEBUG)
+    add_definitions(-DDEBUG)
+endif()
+
 option(WITH_GPU "compile warp-rnnt with cuda." ${CUDA_FOUND})
 option(WITH_OMP "compile warp-rnnt with openmp." ON)
 

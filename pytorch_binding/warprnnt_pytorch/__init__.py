@@ -57,6 +57,7 @@ class RNNTLoss(Function):
         return costs
 
     def backward(self, grad_output):
+        grad_output = grad_output.view(-1, 1, 1, 1).to(self.grads)
         return self.grads.mul_(grad_output), None, None, None
 
 def check_type(var, t, name):

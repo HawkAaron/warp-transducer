@@ -120,13 +120,8 @@ GpuRNNT<ProbT>::compute_cost_and_score(const ProbT* const acts,
     // alphas
     start = std::chrono::high_resolution_clock::now();
 #endif
-#if defined(USE_NAIVE_KERNEL)
     compute_alphas_kernel_naive<ProbT><<<1, minibatch_, 0, stream_>>>(acts, denom, alphas, llForward, 
         input_lengths, label_lengths, labels, minibatch_, maxT_, maxU_, alphabet_size_, blank_);
-#else
-    compute_alphas_kernel<ProbT><<<minibatch_, maxU_, 0, stream_>>>(acts, denom, alphas, llForward, 
-        input_lengths, label_lengths, labels, minibatch_, maxT_, maxU_, alphabet_size_, blank_);
-#endif
 #if defined(DEBUG)
     cudaStreamSynchronize(stream_);
     end = std::chrono::high_resolution_clock::now();
@@ -159,13 +154,8 @@ GpuRNNT<ProbT>::compute_cost_and_score(const ProbT* const acts,
 #if defined(DEBUG)
         start = std::chrono::high_resolution_clock::now();
 #endif
-#if defined(USE_NAIVE_KERNEL)
         compute_betas_kernel_naive<ProbT><<<1, minibatch_, 0, stream_>>>(acts, denom, betas, llBackward,
             input_lengths, label_lengths, labels, minibatch_, maxT_, maxU_, alphabet_size_, blank_);
-#else
-        compute_betas_kernel<ProbT><<<minibatch_, maxU_, 0, stream_>>>(acts, denom, betas, llBackward,
-            input_lengths, label_lengths, labels, minibatch_, maxT_, maxU_, alphabet_size_, blank_);
-#endif
 #if defined(DEBUG)
         cudaStreamSynchronize(stream_);
         end = std::chrono::high_resolution_clock::now();

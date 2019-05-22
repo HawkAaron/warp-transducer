@@ -7,21 +7,9 @@ from .warp_rnnt import *
 
 __all__ = ['RNNTLoss']
 
-class RNNTLoss(Function):
-    """
-    Parameters:
-        blank (int, optional): blank label. Default: 0.
-        reduction (string, optional): Specifies the reduction to apply to the output:
-            'none' | 'mean' | 'sum'. 'none': no reduction will be applied, 
-            'mean': the output losses will be divided by the target lengths and
-            then the mean over the batch is taken. Default: 'mean'
-    """
-    def __init__(self, blank=0, reduction='mean'):
-        super(RNNTLoss, self).__init__()
-        self.blank = blank
-        self.reduction = reduction
-
-    def forward(self, acts, labels, act_lens, label_lens):
+class _RNNT(Function):
+    @staticmethod
+    def forward(ctx, acts, labels, act_lens, label_lens, blank, reduction):
         """
         acts: Tensor of (batch x seqLength x labelLength x outputDim) containing output from network
         labels: 2 dimensional Tensor containing all the targets of the batch with zero padded
@@ -42,23 +30,56 @@ class RNNTLoss(Function):
                   label_lens,
                   costs,
                   grads,
-                  self.blank,
+                  blank,
                   0)
 
-        if self.reduction in ['sum', 'mean']:
+        if reduction in ['sum', 'mean']:
             costs = torch.FloatTensor([costs.sum()])
-            if self.reduction == 'mean':
+            if reduction == 'mean':
                 costs /= minibatch_size
                 grads /= minibatch_size
 
         costs = costs.to(acts.device)
-        self.grads = grads
+        ctx.grads = grads
 
         return costs
 
-    def backward(self, grad_output):
-        grad_output = grad_output.view(-1, 1, 1, 1).to(self.grads)
-        return self.grads.mul_(grad_output), None, None, None
+    @staticmethod
+    def backward(ctx, grad_output):
+        grad_output = grad_output.view(-1, 1, 1, 1).to(ctx.grads)
+        return ctx.grads.mul_(grad_output), None, None, None, None, None
+
+
+class RNNTLoss(Function):
+    """
+    Parameters:
+        blank (int, optional): blank label. Default: 0.
+        reduction (string, optional): Specifies the reduction to apply to the output:
+            'none' | 'mean' | 'sum'. 'none': no reduction will be applied, 
+            'mean': the output losses will be divided by the target lengths and
+            then the mean over the batch is taken. Default: 'mean'
+    """
+    def __init__(self, blank=0, reduction='mean'):
+        super(RNNTLoss, self).__init__()
+        self.blank = blank
+        self.reduction = reduction
+        self.loss = _RNNT.apply
+
+    def forward(self, acts, labels, act_lens, label_lens):
+        """
+        acts: Tensor of (batch x seqLength x labelLength x outputDim) containing output from network
+        labels: 2 dimensional Tensor containing all the targets of the batch with zero padded
+        act_lens: Tensor of size (batch) containing size of each output sequence from the network
+        label_lens: Tensor of (batch) containing label length of each example
+        """
+        certify_inputs(acts, labels, act_lens, label_lens)
+
+        if not acts.is_cuda:
+            acts = torch.nn.functional.log_softmax(acts, -1)
+            labels = torch.cat([label[:i] for label, i in zip(labels, ylen)], dim=0)
+
+        return self.loss(acts, labels, act_lens, label_lens, self.blank, self.reduction)
+
 
 def check_type(var, t, name):
     if var.dtype is not t:

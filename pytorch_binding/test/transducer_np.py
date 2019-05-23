@@ -94,14 +94,11 @@ class _RNNT(Function):
     @staticmethod
     def forward(ctx, acts, labels, act_lens, label_lens):
         is_cuda = True if acts.is_cuda else False
-        costs, grads = transduce_batch(acts.cpu().numpy(), labels.cpu().numpy(),
+        costs, grads = transduce_batch(acts.detach().cpu().numpy(), labels.cpu().numpy(),
                             act_lens.cpu().numpy(), label_lens.cpu().numpy())
 
         costs = torch.FloatTensor([sum(costs)])
-        grads = torch.Tensor(grads)
-        if is_cuda:
-            costs = costs.cuda()
-            grads = grads.cuda()
+        grads = torch.Tensor(grads).to(acts)
         
         ctx.grads = Variable(grads)
         return costs
@@ -126,4 +123,6 @@ class RNNTLoss(Module):
         _assert_no_grad(labels)
         _assert_no_grad(act_lens)
         _assert_no_grad(label_lens)
+
+        acts = torch.nn.functional.log_softmax(acts, -1)
         return self.rnnt(acts, labels, act_lens, label_lens)

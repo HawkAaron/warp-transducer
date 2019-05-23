@@ -41,9 +41,7 @@ def wrap_and_call(acts, labels):
         lengths = lengths.cuda(gpu)
         label_lengths = label_lengths.cuda(gpu)
 
-    log_probs = nn.functional.log_softmax(acts, dim=3)
-
-    costs = fn(log_probs, labels, lengths, label_lengths)
+    costs = fn(acts, labels, lengths, label_lengths)
     cost = torch.sum(costs)
     cost.backward()
     # print(repr(acts.grad.data.cpu().numpy()))

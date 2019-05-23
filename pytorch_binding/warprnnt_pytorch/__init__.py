@@ -76,7 +76,7 @@ class RNNTLoss(Function):
 
         if not acts.is_cuda:
             acts = torch.nn.functional.log_softmax(acts, -1)
-            labels = torch.cat([label[:i] for label, i in zip(labels, ylen)], dim=0)
+            labels = torch.cat([label[:i] for label, i in zip(labels, label_lens)], dim=0)
 
         return self.loss(acts, labels, act_lens, label_lens, self.blank, self.reduction)
 

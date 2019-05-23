@@ -5,7 +5,7 @@ from torch.nn import Module
 
 from .warp_rnnt import *
 
-__all__ = ['RNNTLoss']
+__all__ = ['rnnt_loss', 'RNNTLoss']
 
 class _RNNT(Function):
     @staticmethod
@@ -19,6 +19,9 @@ class _RNNT(Function):
         is_cuda = acts.is_cuda
 
         certify_inputs(acts, labels, act_lens, label_lens)
+
+        if not is_cuda:
+            labels = torch.cat([label[:i] for label, i in zip(labels, label_lens)], dim=0)
 
         loss_func = warp_rnnt.gpu_rnnt if is_cuda else warp_rnnt.cpu_rnnt
         grads = torch.zeros_like(acts) if acts.requires_grad else torch.zeros(0, device=acts.device)
@@ -50,7 +53,27 @@ class _RNNT(Function):
         return ctx.grads.mul_(grad_output), None, None, None, None, None
 
 
-class RNNTLoss(Function):
+def rnnt_loss(acts, labels, act_lens, label_lens, blank=0, reduction='mean'):
+    """ RNN Transducer Loss
+
+    Args:
+        acts: Tensor of (batch x seqLength x labelLength x outputDim) containing output from network
+        labels: 2 dimensional Tensor containing all the targets of the batch with zero padded
+        act_lens: Tensor of size (batch) containing size of each output sequence from the network
+        label_lens: Tensor of (batch) containing label length of each example
+        blank (int, optional): blank label. Default: 0.
+        reduction (string, optional): Specifies the reduction to apply to the output:
+            'none' | 'mean' | 'sum'. 'none': no reduction will be applied, 
+            'mean': the output losses will be divided by the target lengths and
+            then the mean over the batch is taken. Default: 'mean'
+    """
+    if not acts.is_cuda:
+        acts = torch.nn.functional.log_softmax(acts, -1)
+
+    return _RNNT.apply(acts, labels, act_lens, label_lens, blank, reduction)
+
+
+class RNNTLoss(Module):
     """
     Parameters:
         blank (int, optional): blank label. Default: 0.
@@ -72,11 +95,8 @@ class RNNTLoss(Function):
         act_lens: Tensor of size (batch) containing size of each output sequence from the network
         label_lens: Tensor of (batch) containing label length of each example
         """
-        certify_inputs(acts, labels, act_lens, label_lens)
-
         if not acts.is_cuda:
             acts = torch.nn.functional.log_softmax(acts, -1)
-            labels = torch.cat([label[:i] for label, i in zip(labels, label_lens)], dim=0)
 
         return self.loss(acts, labels, act_lens, label_lens, self.blank, self.reduction)
 

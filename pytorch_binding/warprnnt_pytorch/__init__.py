@@ -20,9 +20,6 @@ class _RNNT(Function):
 
         certify_inputs(acts, labels, act_lens, label_lens)
 
-        if not is_cuda:
-            labels = torch.cat([label[:i] for label, i in zip(labels, label_lens)], dim=0)
-
         loss_func = warp_rnnt.gpu_rnnt if is_cuda else warp_rnnt.cpu_rnnt
         grads = torch.zeros_like(acts) if acts.requires_grad else torch.zeros(0, device=acts.device)
         minibatch_size = acts.size(0)

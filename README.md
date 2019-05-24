@@ -35,6 +35,8 @@ Benchmarked on a GeForce GTX 1080 Ti GPU.
 The interface is in `include/rnnt.h`. It supports CPU or GPU execution, and you can specify OpenMP parallelism
 if running on the CPU, or the CUDA stream if running on the GPU. We took care to ensure that the library does not 
 preform memory allocation internally, in oder to avoid synchronizations and overheads caused by memory allocation.
+**Please be carefull if you use the RNNTLoss CPU version, log_softmax should be manually called before the loss function.
+(For pytorch binding, this is optionally handled by tensor device.)**
 
 ## Compilation
 warp-transducer has been tested on Ubuntu 16.04 and CentOS 7. Windows is not supported at this time.

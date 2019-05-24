@@ -63,12 +63,6 @@ if cuda:
     labels = labels.cuda()
     act_length = act_length.cuda()
     label_length = label_length.cuda()
-else:
-    # if use CPU loss, then take log_softmax first
-    acts = torch.nn.functional.log_softmax(
-        torch.autograd.Variable(acts), dim=3
-    ).data
-
 acts = torch.autograd.Variable(acts, requires_grad=True)
 labels = torch.autograd.Variable(labels)
 act_length = torch.autograd.Variable(act_length)

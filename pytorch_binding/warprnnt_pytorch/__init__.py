@@ -93,6 +93,8 @@ class RNNTLoss(Module):
         label_lens: Tensor of (batch) containing label length of each example
         """
         if not acts.is_cuda:
+            # NOTE manually done log_softmax for CPU version,
+            # log_softmax is computed within GPU version.
             acts = torch.nn.functional.log_softmax(acts, -1)
 
         return self.loss(acts, labels, act_lens, label_lens, self.blank, self.reduction)

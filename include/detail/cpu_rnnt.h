@@ -194,6 +194,18 @@ CpuRNNT<ProbT>::compute_alphas(const ProbT* const log_probs, int T, int U, ProbT
         }
     }
 
+#ifdef DEBUG_KERNEL
+    printf("cpu alphas:\n");
+    printf("%d %d\n", T, U);
+    for (int t = 0; t < T; t++) {
+        for (int u = 0; u < U; u++) {
+            printf("%.2f ", alphas[idx(t, u)]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+#endif
+
     ProbT loglike = alphas[idx(T-1, U-1)] + log_probs[idx(T-1, U-1) * 2];
 
     return loglike;
@@ -222,6 +234,19 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
             }
         }
     }
+
+#ifdef DEBUG_KERNEL
+    printf("cpu betas:\n");
+    printf("%d %d\n", T, U);
+    for (int t = 0; t < T; t++) {
+        for (int u = 0; u < U; u++) {
+            printf("%.2f ", betas[idx(t, u)]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+#endif
+
 
     ProbT loglike = betas[0];
 

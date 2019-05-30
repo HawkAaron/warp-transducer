@@ -14,7 +14,6 @@ __global__ void compute_alphas_kernel(const Tp* const acts, const Tp* const deno
     // launch B blocks, each block has U threads
     int b = blockIdx.x; // batch
     int u = threadIdx.x; // label id, u
-    //int tid = threadIdx.x; // mb
     const int T = xlen[b];
     const int U = ylen[b] + 1;
     const int* labels = mlabels + b * (maxU - 1); // mb label start point
@@ -23,50 +22,24 @@ __global__ void compute_alphas_kernel(const Tp* const acts, const Tp* const deno
     if (u == 0) alphas[0] = 0;
 
     __syncthreads();
-    if (u == 0) {
-        for (int t = 1; t < T; ++t) {
-            alphas[t * maxU + u] = alphas[(t-1) * maxU + u] + logp(denom, acts, maxT, maxU, alphabet_size, b, t-1, 0, blank_);
-            __syncthreads();
-        }
-        /*
-        for (int t = 0; t < U-1; ++t)
-            __syncthreads();
-        */
-    } else if (u < U) {
-        for (int n = 1; n < T+U-1; ++n) {
-            const int t = n - u;
-            if (t == 0) {
+    for (int n = 1; n < T+U-1; ++n) {
+        int t = n - u;
+        if (u == 0) {
+            if (t > 0 && t < T) {
+                alphas[t * maxU + u] = alphas[(t-1) * maxU + u] + logp(denom, acts, maxT, maxU, alphabet_size, b, t-1, 0, blank_);
+            }
+        } else if (u < U) {
+            if (t == 0)
                 alphas[u] = alphas[u-1] + logp(denom, acts, maxT, maxU, alphabet_size, b, 0, u-1, labels[u-1]);
-            } else if (t > 0 && t < T) {
+            else if (t > 0 && t < T) {
                 Tp no_emit = alphas[(t-1) * maxU + u] + logp(denom, acts, maxT, maxU, alphabet_size, b, t-1, u, blank_);
                 Tp emit = alphas[t * maxU + u-1] + logp(denom, acts, maxT, maxU, alphabet_size, b, t, u-1, labels[u-1]);
                 alphas[t * maxU + u] = rnnt_helper::log_sum_exp<Tp>(emit, no_emit);
             }
-            __syncthreads();
         }
-    } else {
-        /*
-        for (int t = 1; t < T+U-1; ++t)
-            __syncthreads();
-        */
+        __syncthreads();
     }
 
-/*
-    for (int t = 0; t < T; ++t) {
-        for (int u = 0; u < U; ++u) {
-            if (u == 0 && t > 0)
-                alphas[t * maxU + u] = alphas[(t-1) * maxU + u] + logp(denom, acts, maxT, maxU, alphabet_size, tid, t-1, 0, blank_);
-            if (t == 0 && u > 0)
-                alphas[u] = alphas[u-1] + logp(denom, acts, maxT, maxU, alphabet_size, tid, 0, u-1, labels[u-1]);
-            if (t > 0 && u > 0) {
-                Tp no_emit = alphas[(t-1) * maxU + u] + logp(denom, acts, maxT, maxU, alphabet_size, tid, t-1, u, blank_);
-                Tp emit = alphas[t * maxU + u-1] + logp(denom, acts, maxT, maxU, alphabet_size, tid, t, u-1, labels[u-1]);
-                alphas[t * maxU + u] = rnnt_helper::log_sum_exp<Tp>(emit, no_emit);
-            }
-        }
-    }
-*/
-    //__syncthreads();
     if (u == 0) {
         Tp loglike = alphas[(T-1) * maxU + U-1] + logp(denom, acts, maxT, maxU, alphabet_size, b, T-1, U-1, blank_);
         llForward[b] = loglike;
@@ -108,7 +81,6 @@ __global__ void compute_betas_kernel(const Tp* const acts, const Tp* const denom
     const int* const mlabels, const int minibatch, const int maxT, const int maxU, const int alphabet_size, const int blank_) {
     int b = blockIdx.x; // batch
     int u = threadIdx.x; // label id, u
-    //int tid = threadIdx.x; // mb
     const int T = xlen[b];
     const int U = ylen[b] + 1;
     const int* labels = mlabels + b * (maxU - 1);
@@ -118,48 +90,22 @@ __global__ void compute_betas_kernel(const Tp* const acts, const Tp* const denom
         betas[(T-1) * maxU + U-1] = logp(denom, acts, maxT, maxU, alphabet_size, b, T-1, U-1, blank_);
 
     __syncthreads();
-    if (u == U-1) {
-        for (int t = T-2; t >= 0; --t) {
-            betas[t * maxU + U-1] = betas[(t+1) * maxU + U-1] + logp(denom, acts, maxT, maxU, alphabet_size, b, t, U-1, blank_);
-            __syncthreads();
-        }
-        /*
-        for (int t = 1; t < U; ++t)
-            __syncthreads();
-        */
-    } else if (u < U-1) {
-        for (int n = T+U-3; n >= 0; --n) {
-            const int t = n - u;
-            if (t == T-1) {
+    for (int n = T+U-2; n >= 0; --n) {
+        int t = n - u;
+        if (u == U-1) {
+            if (t >= 0 && t < T-1)
+                betas[t * maxU + U-1] = betas[(t+1) * maxU + U-1] + logp(denom, acts, maxT, maxU, alphabet_size, b, t, U-1, blank_);
+        } else if (u < U) {
+            if (t == T-1)
                 betas[(T-1) * maxU + u] = betas[(T-1) * maxU + u+1] + logp(denom, acts, maxT, maxU, alphabet_size, b, T-1, u, labels[u]);
-            } else if (t >= 0 && t < T-1) {
+            else if (t >= 0 && t < T-1) {
                 Tp no_emit = betas[(t+1) * maxU + u] + logp(denom, acts, maxT, maxU, alphabet_size, b, t, u, blank_);
                 Tp emit = betas[t * maxU + u+1] + logp(denom, acts, maxT, maxU, alphabet_size, b, t, u, labels[u]);
                 betas[t * maxU + u] = rnnt_helper::log_sum_exp<Tp>(emit, no_emit);
             }
-            __syncthreads();
         }
-    } else {
-        /*
-        for (int t = T+U-3; t >= 0; --t)
-            __syncthreads();
-        */
+        __syncthreads();
     }
-    /*
-    for (int t = T-1; t >=0; --t) {
-        for (int u = U-1; u >= 0; --u) {
-            if (u == U-1 && t < T-1)
-                betas[t * maxU + U-1] = betas[(t+1) * maxU + U-1] + logp(denom, acts, maxT, maxU, alphabet_size, tid, t, U-1, blank_);
-            if (t == T-1 && u < U-1)
-                betas[(T-1) * maxU + u] = betas[(T-1) * maxU + u+1] + logp(denom, acts, maxT, maxU, alphabet_size, tid, T-1, u, labels[u]);
-            if (t < T-1 && u < U-1) {
-                Tp no_emit = betas[(t+1) * maxU + u] + logp(denom, acts, maxT, maxU, alphabet_size, tid, t, u, blank_);
-                Tp emit = betas[t * maxU + u+1] + logp(denom, acts, maxT, maxU, alphabet_size, tid, t, u, labels[u]);
-                betas[t * maxU + u] = rnnt_helper::log_sum_exp<Tp>(emit, no_emit);
-            }
-        }
-    }
-    */
 
     if (u == 0) {
         llBackward[b] = betas[0];

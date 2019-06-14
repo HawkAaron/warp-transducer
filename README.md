@@ -55,9 +55,15 @@ if you have a non standard CUDA install, add `-DCUDA_TOOLKIT_ROOT_DIR=/path/to/c
 
 Run cmake and build:
 ```bash
-cmake ..
+cmake -DCUDA_TOOLKIT_ROOT_DIR=$CUDA_HOME ..
 make
 ```
+if it logs
+```
+-- cuda found TRUE
+-- Building shared library with no GPU support
+```
+please run `rm CMakeCache.txt` and cmake again.
 
 The C library should now be built along with test executables. If CUDA was detected, then `test_gpu` will be built;
 `test_cpu` will always be built.

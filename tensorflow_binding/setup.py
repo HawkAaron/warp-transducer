@@ -8,6 +8,7 @@ import re
 import setuptools
 import sys
 import unittest
+import warnings
 from setuptools.command.build_ext import build_ext as orig_build_ext
 from distutils.version import LooseVersion
 

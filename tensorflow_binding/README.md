@@ -61,7 +61,7 @@ import warprnnt_tensorflow
 The WarpRNNT op is available via the `warprnnt_tensorflow.rnnt_loss` function:
 
 ```python
-costs = warprnnt_tensorflow.rnnt_loss(acts, labels, label_lengths, input_lengths)
+costs = warprnnt_tensorflow.rnnt_loss(acts, labels, input_lengths, label_lengths)
 ```
 
 The `acts` is a 4 dimensional Tensor, `labels`

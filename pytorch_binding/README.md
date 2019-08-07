@@ -82,7 +82,8 @@ RNNTLoss(size_average=True, blank_label=0):
 
 forward(acts, labels, act_lens, label_lens):
     """
-    acts: Tensor of (batch x seqLength x labelLength x outputDim) containing output from network
+    acts: Tensor of [batch x seqLength x (labelLength + 1) x outputDim] containing output from network
+     (+1 means first blank label prediction)
     labels: 2 dimensional Tensor containing all the targets of the batch with zero padded
     act_lens: Tensor of size (batch) containing size of each output sequence from the network
     label_lens: Tensor of (batch) containing label length of each example

@@ -67,3 +67,31 @@ costs = warprnnt_tensorflow.rnnt_loss(acts, labels, input_lengths, label_lengths
 The `acts` is a 4 dimensional Tensor, `labels`
 is 2 dimensinal Tensor, and all the others are single dimension Tensors.
 See the main WarpRNNT documentation for more information.
+
+## Python interface
+```python
+def rnnt_loss(acts, labels, input_lengths, label_lengths, blank_label=0):
+    '''Computes the RNNT loss between a sequence of activations and a
+    ground truth labeling.
+    Args:
+        acts: A 4-D Tensor of floats.  The dimensions
+                     should be (B, T, U+1, V), where B is the minibatch index,
+                     T is the time index, U is the label sequence
+                     length (+1 means blank label prepanded), 
+                     and V indexes over activations for each 
+                     symbol in the alphabet.
+        labels: A 2-D Tensor of ints, a padded label sequences to make sure 
+                     labels for the minibatch are same length.
+        input_lengths: A 1-D Tensor of ints, the number of time steps
+                       for each sequence in the minibatch.
+        label_lengths: A 1-D Tensor of ints, the length of each label
+                       for each example in the minibatch.
+        blank_label: int, the label value/index that the RNNT
+                     calculation should use as the blank label
+    Returns:
+        1-D float Tensor, the cost of each example in the minibatch
+        (as negative log probabilities).
+    * This class performs the softmax operation internally.
+    * The label reserved for the blank symbol should be label 0.
+    '''
+```

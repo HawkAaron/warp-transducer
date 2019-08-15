@@ -43,13 +43,12 @@ typedef enum {
 struct rnntOptions {
     /// indicates where the rnnt calculation should take place {RNNT_CPU | RNNT_GPU}
     rnntComputeLocation loc;
-    union {
-        /// used when loc == RNNT_CPU, the maximum number of threads that can be used
-        unsigned int num_threads;
 
-        /// used when loc == RNNT_GPU, which stream the kernels should be launched in
-        CUstream stream;
-    };
+    /// The maximum number of threads that can be used
+    unsigned int num_threads;
+
+    /// used when loc == RNNT_GPU, which stream the kernels should be launched in
+    CUstream stream;
 
     /// the label value/index that the RNNT calculation should use as the blank label
     int blank_label;

@@ -73,11 +73,12 @@ else:
 extra_compile_args = ['-std=c++11', '-fPIC', '-D_GLIBCXX_USE_CXX11_ABI=' + TF_CXX11_ABI]
 # current tensorflow code triggers return type errors, silence those for now
 extra_compile_args += ['-Wno-return-type']
+if LooseVersion(tf.__version__) >= LooseVersion('1.4')
+    extra_compile_args += tf.sysconfig.get_compile_flags()
 
 extra_link_args = []
 if LooseVersion(tf.__version__) >= LooseVersion('1.4'):
-    if os.path.exists(os.path.join(tf_src_dir, 'libtensorflow_framework.so')):
-        extra_link_args = ['-L' + tf_src_dir, '-ltensorflow_framework']
+    ëxtra_link_args += tf.sysconfig.get_link_flags()
 
 if (enable_gpu):
     extra_compile_args += ['-DWARPRNNT_ENABLE_GPU']
@@ -116,7 +117,8 @@ ext = setuptools.Extension('warprnnt_tensorflow.kernels',
 
 class build_tf_ext(orig_build_ext):
     def build_extensions(self):
-        self.compiler.compiler_so.remove('-Wstrict-prototypes')
+        if LooseVersion(tf.__version__) < LooseVersion('1.4'):
+            self.compiler.compiler_so.remove('-Wstrict-prototypes')
         orig_build_ext.build_extensions(self)
 
 def discover_test_suite():

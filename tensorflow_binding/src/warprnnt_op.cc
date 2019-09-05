@@ -5,7 +5,7 @@
 
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "tensorflow/core/kernels/bounds_check.h"
+#include "tensorflow/core/framework/bounds_check.h"
 #include "tensorflow/core/framework/allocator.h"
 #include "rnnt.h"
 

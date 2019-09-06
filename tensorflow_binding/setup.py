@@ -73,7 +73,7 @@ else:
 extra_compile_args = ['-std=c++11', '-fPIC', '-D_GLIBCXX_USE_CXX11_ABI=' + TF_CXX11_ABI]
 # current tensorflow code triggers return type errors, silence those for now
 extra_compile_args += ['-Wno-return-type']
-if LooseVersion(tf.__version__) >= LooseVersion('1.4')
+if LooseVersion(tf.__version__) >= LooseVersion('1.4'):
     extra_compile_args += tf.sysconfig.get_compile_flags()
 
 extra_link_args = []

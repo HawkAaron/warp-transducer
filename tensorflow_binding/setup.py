@@ -78,7 +78,7 @@ if LooseVersion(tf.__version__) >= LooseVersion('1.4'):
 
 extra_link_args = []
 if LooseVersion(tf.__version__) >= LooseVersion('1.4'):
-    ëxtra_link_args += tf.sysconfig.get_link_flags()
+    extra_link_args += tf.sysconfig.get_link_flags()
 
 if (enable_gpu):
     extra_compile_args += ['-DWARPRNNT_ENABLE_GPU']

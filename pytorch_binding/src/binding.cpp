@@ -18,16 +18,6 @@ int cpu_rnnt(torch::Tensor acts,
             int blank_label,
             int num_threads) {
 
-    float *acts_ptr = (float*) acts.data_ptr();
-    float *grads_ptr = NULL; // this will trigger the score forward code path
-    if (grads.storage())
-        grads_ptr = (float*) grads.data_ptr();
-
-    int *input_lengths_ptr = (int*) input_lengths.data_ptr();
-    int *labels_ptr = (int*) labels.data_ptr();
-    int *label_lengths_ptr = (int*) label_lengths.data_ptr();
-    float *costs_ptr = (float*) costs.data_ptr();
-
     int maxT = acts.size(0);
     int maxU = acts.size(1);
     int minibatch_size = acts.size(2);
@@ -52,19 +42,43 @@ int cpu_rnnt(torch::Tensor acts,
     options.num_threads = std::max(options.num_threads, (unsigned int) 1);
 #endif
 
-    size_t cpu_size_bytes;
-    get_workspace_size(maxT, maxU, minibatch_size,
-                       false, &cpu_size_bytes);
+    size_t cpu_size_bytes = 0;
+    switch (acts.type().scalarType()) {
+      case torch::ScalarType::Float:
+        {
+        get_workspace_size(maxT, maxU, minibatch_size,
+                           false, &cpu_size_bytes);
 
-    float* cpu_workspace = (float*) new unsigned char[cpu_size_bytes];
-    compute_rnnt_loss(acts_ptr, grads_ptr,
-                     labels_ptr, label_lengths_ptr,
-                     input_lengths_ptr, alphabet_size,
-                     minibatch_size, costs_ptr,
-                     cpu_workspace, options);
+        float* cpu_workspace = (float*) new unsigned char[cpu_size_bytes];
+        compute_rnnt_loss(acts.data<float>(), grads.data<float>(),
+                         labels.data<int>(), label_lengths.data<int>(),
+                         input_lengths.data<int>(), alphabet_size,
+                         minibatch_size, costs.data<float>(),
+                         cpu_workspace, options);
 
-    delete cpu_workspace;
-    return 1;
+        delete cpu_workspace;
+        return 0;
+        }
+      case torch::ScalarType::Double:
+        {
+        get_workspace_size(maxT, maxU, minibatch_size,
+                           false, &cpu_size_bytes,
+                           sizeof(double));
+
+        double* cpu_workspace = (double*) new unsigned char[cpu_size_bytes];
+        compute_rnnt_loss_fp64(acts.data<double>(), grads.data<double>(),
+                         labels.data<int>(), label_lengths.data<int>(),
+                         input_lengths.data<int>(), alphabet_size,
+                         minibatch_size, costs.data<double>(),
+                         cpu_workspace, options);
+
+        delete cpu_workspace;
+        return 0;
+        }
+      default:
+        std::cerr << __FILE__ << ':' << __LINE__ << ": " << "unsupported data type" << std::endl;
+    }
+    return -1;
 }
 #ifdef WARPRNNT_ENABLE_GPU
 int gpu_rnnt(torch::Tensor acts,
@@ -75,16 +89,6 @@ int gpu_rnnt(torch::Tensor acts,
             torch::Tensor grads,
             int blank_label,
             int num_threads) {
-
-    float *acts_ptr = (float*) acts.data_ptr();
-    float *grads_ptr = NULL; // this will trigger the score forward code path
-    if (grads.storage())
-        grads_ptr = (float*) grads.data_ptr();
-
-    int *input_lengths_ptr = (int*) input_lengths.data_ptr();
-    int *labels_ptr = (int*) labels.data_ptr();
-    int *label_lengths_ptr = (int*) label_lengths.data_ptr();
-    float *costs_ptr = (float*) costs.data_ptr();
 
     int minibatch_size = acts.size(0);
     int maxT = acts.size(1);
@@ -104,22 +108,49 @@ int gpu_rnnt(torch::Tensor acts,
     options.num_threads = std::max(options.num_threads, (unsigned int) 1);
 #endif
 
-    size_t gpu_size_bytes;
-    get_workspace_size(maxT, maxU, minibatch_size,
-                       true, &gpu_size_bytes);
+    switch (acts.type().scalarType()) {
+      case torch::ScalarType::Float:
+        {
+        size_t gpu_size_bytes;
+        get_workspace_size(maxT, maxU, minibatch_size,
+                           true, &gpu_size_bytes);
 
-    cudaSetDevice(acts.get_device());
+        cudaSetDevice(acts.get_device());
 
-    void* gpu_workspace = THCudaMalloc(state, gpu_size_bytes);
+        void* gpu_workspace = THCudaMalloc(state, gpu_size_bytes);
 
-    compute_rnnt_loss(acts_ptr, grads_ptr,
-                     labels_ptr, label_lengths_ptr,
-                     input_lengths_ptr, alphabet_size,
-                     minibatch_size, costs_ptr,
-                     gpu_workspace, options);
+        compute_rnnt_loss(acts.data<float>(), grads.data<float>(),
+                         labels.data<int>(), label_lengths.data<int>(),
+                         input_lengths.data<int>(), alphabet_size,
+                         minibatch_size, costs.data<float>(),
+                         gpu_workspace, options);
 
-    THCudaFree(state, gpu_workspace);
-    return 1;
+        THCudaFree(state, gpu_workspace);
+        return 0;
+        }
+      case torch::ScalarType::Double:
+        {
+        size_t gpu_size_bytes;
+        get_workspace_size(maxT, maxU, minibatch_size,
+                           true, &gpu_size_bytes);
+
+        cudaSetDevice(acts.get_device());
+
+        void* gpu_workspace = THCudaMalloc(state, gpu_size_bytes);
+
+        compute_rnnt_loss_fp64(acts.data<double>(), grads.data<double>(),
+                         labels.data<int>(), label_lengths.data<int>(),
+                         input_lengths.data<int>(), alphabet_size,
+                         minibatch_size, costs.data<double>(),
+                         gpu_workspace, options);
+
+        THCudaFree(state, gpu_workspace);
+        return 0;
+        }
+      default:
+        std::cerr << __FILE__ << ':' << __LINE__ << ": " << "unsupported data type" << std::endl;
+    }
+    return -1;
 }
 #endif
 

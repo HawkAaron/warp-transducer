@@ -21,9 +21,9 @@ class _RNNT(Function):
         certify_inputs(acts, labels, act_lens, label_lens)
 
         loss_func = warp_rnnt.gpu_rnnt if is_cuda else warp_rnnt.cpu_rnnt
-        grads = torch.zeros_like(acts) if acts.requires_grad else torch.zeros(0, device=acts.device)
+        grads = torch.zeros_like(acts) if acts.requires_grad else torch.zeros(0).to(acts)
         minibatch_size = acts.size(0)
-        costs = torch.zeros(minibatch_size)
+        costs = torch.zeros(minibatch_size, dtype=acts.dtype)
         loss_func(acts,
                   labels,
                   act_lens,
@@ -34,7 +34,7 @@ class _RNNT(Function):
                   0)
 
         if reduction in ['sum', 'mean']:
-            costs = torch.FloatTensor([costs.sum()])
+            costs = costs.sum().unsqueeze_(-1)
             if reduction == 'mean':
                 costs /= minibatch_size
                 grads /= minibatch_size
@@ -113,7 +113,7 @@ def check_dim(var, dim, name):
         raise ValueError("{} must be {}D".format(name, dim))
 
 def certify_inputs(log_probs, labels, lengths, label_lengths):
-    check_type(log_probs, torch.float32, "log_probs")
+    # check_type(log_probs, torch.float32, "log_probs")
     check_type(labels, torch.int32, "labels")
     check_type(label_lengths, torch.int32, "label_lengths")
     check_type(lengths, torch.int32, "lengths")

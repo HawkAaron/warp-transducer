@@ -95,7 +95,7 @@ IF (WITH_GPU)
 
     MESSAGE(STATUS "Building shared library with GPU support")
 
-    CUDA_ADD_LIBRARY(warprnnt SHARED src/rnnt_entrypoint.cu src/reduce.cu)
+    CUDA_ADD_LIBRARY(warprnnt SHARED src/rnnt_entrypoint.cu)
     IF (!Torch_FOUND)
         TARGET_LINK_LIBRARIES(warprnnt ${CUDA_curand_LIBRARY})
     ENDIF()

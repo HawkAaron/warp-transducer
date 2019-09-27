@@ -112,6 +112,18 @@ rnntStatus_t compute_rnnt_loss(const float* const activations,
                              void *workspace,
                              rnntOptions options);
 
+rnntStatus_t compute_rnnt_loss_fp64(const double* const activations,
+                             double* gradients,
+                             const int* const flat_labels,
+                             const int* const label_lengths,
+                             const int* const input_lengths,
+                             int alphabet_size,
+                             int minibatch,
+                             double *costs,
+                             void *workspace,
+                             rnntOptions options);
+
+
 
 /** For a given set of max sequence length and minibatch size return the required 
  *  workspace size. This will need to be allocated in the same memory space as your
@@ -127,7 +139,8 @@ rnntStatus_t compute_rnnt_loss(const float* const activations,
 rnntStatus_t get_workspace_size(int maxT, int maxU,
                                int minibatch,
                                bool gpu,
-                               size_t* size_bytes);
+                               size_t* size_bytes,
+                               size_t dtype_size=sizeof(float));
 
 #ifdef __cplusplus
 }

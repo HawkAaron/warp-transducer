@@ -162,7 +162,9 @@ __global__ void compute_grad_kernel(Tp* grads, const Tp* const acts, const Tp* c
             // Tp logpk = logp(denom, acts, maxT, maxU, alphabet_size, mb, t, u, idx);
             Tp grad = exp(alphas[col] + betas[col] + logpk - logll[mb]);
             // grad to last blank transition
-            if (idx == blank_ && t == T-1 && u == U-1) grad -= 1;
+            if (idx == blank_ && t == T-1 && u == U-1) {
+                grad -= exp(alphas[col] + logpk - logll[mb]);
+            }
             if (idx == blank_ && t < T-1) {
                 grad -= exp(alphas[col] + logpk - logll[mb] + betas[col + maxU]);
             }

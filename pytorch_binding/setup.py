@@ -11,7 +11,7 @@ warp_rnnt_path = "../build"
 if torch.cuda.is_available() or "CUDA_HOME" in os.environ:
     enable_gpu = True
 else:
-    print("Torch was not built with CUDA support, not building warp-ctc GPU extensions.")
+    print("Torch was not built with CUDA support, not building GPU extensions.")
     enable_gpu = False
 
 if platform.system() == 'Darwin':

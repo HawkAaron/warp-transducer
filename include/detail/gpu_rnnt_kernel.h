@@ -168,7 +168,7 @@ __global__ void compute_grad_kernel(Tp* grads, const Tp* const acts, const Tp* c
             if (idx == blank_ && t < T-1) {
                 grad -= exp(alphas[col] + logpk - logll[mb] + betas[col + maxU]);
             }
-            if (idx == labels[u] && u < U-1) {
+            if (u < U-1 && idx == labels[u]) {
                 grad -= exp(alphas[col] + logpk - logll[mb] + betas[col+1]);
             }
             grads[col * alphabet_size + idx] = grad;

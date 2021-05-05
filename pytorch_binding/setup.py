@@ -35,7 +35,7 @@ if not os.path.exists(os.path.join(warp_rnnt_path, "libwarprnnt" + lib_ext)):
            "Build warp-rnnt and set WARP_RNNT_PATH to the location of"
            " libwarprnnt.so (default is '../build')").format(warp_rnnt_path))
     sys.exit(1)
-include_dirs = [os.path.realpath('../include')]
+include_dirs = [os.path.realpath('../include'), '/usr/local/cuda/include/']
 
 setup(
     name='warprnnt_pytorch',

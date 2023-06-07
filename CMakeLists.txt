@@ -4,6 +4,7 @@ ELSE()
     cmake_minimum_required(VERSION 2.8)
 ENDIF()
 
+set(CMAKE_CXX_STANDARD 17)
 project(rnnt_release)
 
 IF (NOT APPLE)

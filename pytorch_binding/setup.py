@@ -8,10 +8,7 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension
 
 
 extra_compile_args = ['-fPIC']
-if LooseVersion(torch.__version__) >= LooseVersion("2.1.0"):
-    extra_compile_args += ['-std=c++17']
-else:
-    extra_compile_args += ['-std=c++14']
+extra_compile_args += ['-std=c++17']
 warp_rnnt_path = "../build"
 
 if torch.cuda.is_available() or "CUDA_HOME" in os.environ:

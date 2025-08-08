@@ -1,4 +1,4 @@
-from distutils.version import LooseVersion
+from packaging.version import Version
 import os
 import platform
 import sys
@@ -8,7 +8,9 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension
 
 
 extra_compile_args = ['-fPIC']
-if LooseVersion(torch.__version__) >= LooseVersion("1.5.0"):
+if Version(torch.__version__) >= Version("2.1.0"):
+    extra_compile_args += ['-std=c++17']
+elif Version(torch.__version__) >= Version("1.5.0"):
     extra_compile_args += ['-std=c++14']
 else:
     extra_compile_args += ['-std=c++11']
@@ -39,12 +41,15 @@ include_dirs = [os.path.realpath('../include')]
 
 setup(
     name='warprnnt_pytorch',
-    version="0.1",
+    version="0.2.0",
     description="PyTorch wrapper for RNN-Transducer",
     url="https://github.com/HawkAaron/warp-transducer",
     author="Mingkun Huang",
     author_email="mingkunhuang95@gmail.com",
     packages=find_packages(),
+    install_requires=[
+        'packaging'
+    ],
     ext_modules=[
         CppExtension(
             name='warprnnt_pytorch.warp_rnnt',

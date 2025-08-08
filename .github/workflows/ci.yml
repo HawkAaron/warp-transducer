@@ -1,0 +1,42 @@
+name: CI (CPU-only)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+
+      - name: Configure CMake (CPU-only)
+        run: |
+          mkdir -p build
+          cd build
+          cmake ..
+
+      - name: Build project
+        run: |
+          cd build
+          make -j$(nproc)
+
+      - name: Install and update linker cache
+        run: |
+          cd build
+          sudo make install
+          sudo ldconfig
+
+      - name: Run CPU tests
+        run: |
+          cd build
+          ./test_cpu

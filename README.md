@@ -57,6 +57,7 @@ Run cmake and build:
 ```bash
 cmake -DCUDA_TOOLKIT_ROOT_DIR=$CUDA_HOME ..
 make
+sudo make install #optional
 ```
 if it logs
 ```
@@ -67,6 +68,30 @@ please run `rm CMakeCache.txt` and cmake again.
 
 The C library should now be built along with test executables. If CUDA was detected, then `test_gpu` will be built;
 `test_cpu` will always be built.
+
+## Troubleshooting: `cuda_runtime_api.h: No such file or directory`
+
+If you encounter an error like this during installation:
+
+`
+fatal error: cuda_runtime_api.h: No such file or directory
+`
+
+This usually means the CUDA headers can't be found by the compiler. If your system has CUDA installed (e.g., version 12.9) and the file `cuda_runtime_api.h` exists somewhere like:
+
+`
+/usr/local/cuda-12.9/targets/x86_64-linux/include/cuda_runtime_api.h
+`
+
+Then you can fix this by manually setting the environment variables to point to the correct CUDA paths:
+
+```bash
+export CUDA_HOME=/usr/local/cuda-12.9
+export CFLAGS="-I$CUDA_HOME/targets/x86_64-linux/include"
+export LDFLAGS="-L$CUDA_HOME/targets/x86_64-linux/lib"
+export PATH="$CUDA_HOME/bin:$PATH"
+export LD_LIBRARY_PATH="$CUDA_HOME/lib64:$LD_LIBRARY_PATH"
+```
 
 ## Test
 To run the tests, make sure the CUDA libraries are in `LD_LIBRARY_PATH` (DYLD_LIBRARY_PATH for OSX).

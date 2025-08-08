@@ -61,6 +61,8 @@ struct rnntOptions {
 
     /// memory structure
     bool batch_first;
+
+    float fastemit_lambda;
 };
 
 /** Compute the RNN Transducer loss between a sequence

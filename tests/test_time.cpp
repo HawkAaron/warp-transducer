@@ -12,7 +12,7 @@
 
 #include "test.h"
 
-bool run_test(int B, int T, int L, int A, int num_threads) {
+void run_test(int B, int T, int L, int A, int num_threads) {
     std::mt19937 gen(2);
 
     auto start = std::chrono::high_resolution_clock::now();

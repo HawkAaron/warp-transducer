@@ -239,7 +239,7 @@ bool inf_test() {
     return status;
 }
 
-float numeric_grad(std::vector<float>& acts, std::vector<int>& flat_labels, std::vector<int>& label_lengths,
+void numeric_grad(std::vector<float>& acts, std::vector<int>& flat_labels, std::vector<int>& label_lengths,
                 std::vector<int> sizes, int alphabet_size, int minibatch, 
                 void* rnnt_cpu_workspace, rnntOptions& options, std::vector<float>& num_grad) {
 

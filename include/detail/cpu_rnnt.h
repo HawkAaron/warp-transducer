@@ -20,9 +20,9 @@ class CpuRNNT {
 public:
     // Noncopyable
     CpuRNNT(int minibatch, int maxT, int maxU, int alphabet_size, void* workspace, 
-            int blank, int num_threads, bool batch_first) :
+            int blank, float fastemit_lambda, int num_threads, bool batch_first) :
         minibatch_(minibatch), maxT_(maxT), maxU_(maxU), alphabet_size_(alphabet_size), 
-        workspace_(workspace), blank_(blank), num_threads_(num_threads), batch_first(batch_first) {
+          workspace_(workspace), blank_(blank), fastemit_lambda_(fastemit_lambda), num_threads_(num_threads), batch_first(batch_first) {
 #if defined(RNNT_DISABLE_OMP) || defined(APPLE)
 #else
         if (num_threads > 0) {
@@ -82,6 +82,7 @@ private:
     int alphabet_size_; // Number of characters plus blank
     void* workspace_;
     int blank_;
+    float fastemit_lambda_;
     int num_threads_;
     bool batch_first;
     
@@ -259,7 +260,10 @@ CpuRNNT<ProbT>::compute_betas_and_grad(ProbT* grad, const ProbT* const log_probs
             }
             if (u < U-1) {
                 ProbT g = alphas[idx(t, u)] + betas[idx(t, u+1)];
-                grad[idx(t, u, labels[u])] = -std::exp(log_probs[idx(t, u) * 2 + 1] + g - loglike);
+                grad[idx(t, u, labels[u])] = -(
+                                               (1. + fastemit_lambda_)
+                                               * std::exp(log_probs[idx(t, u) * 2 + 1] + g - loglike)
+                                               );
             }
         }
     }

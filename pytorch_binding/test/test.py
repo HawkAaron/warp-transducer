@@ -23,28 +23,24 @@ args = parser.parse_args()
 
 fn = rnntloss() if args.np else RNNTLoss(reduction='sum')
 
-gpu = 1
+#acts = autograd.Variable(acts, requires_grad=True)
 def wrap_and_call(acts, labels):
     acts = torch.FloatTensor(acts)
-    if use_cuda:
-        acts = acts.cuda(gpu)
-    #acts = autograd.Variable(acts, requires_grad=True)
+    device = torch.device("cuda" if use_cuda else "cpu")
+    acts = acts.to(device)
     acts.requires_grad = True
 
     lengths = [acts.shape[1]] * acts.shape[0]
     label_lengths = [len(l) for l in labels]
-    labels = torch.IntTensor(labels)
-    lengths = torch.IntTensor(lengths)
-    label_lengths = torch.IntTensor(label_lengths)
-    if use_cuda:
-        labels = labels.cuda(gpu)
-        lengths = lengths.cuda(gpu)
-        label_lengths = label_lengths.cuda(gpu)
+
+    labels = torch.IntTensor(labels).to(device)
+    lengths = torch.IntTensor(lengths).to(device)
+    label_lengths = torch.IntTensor(label_lengths).to(device)
 
     costs = fn(acts, labels, lengths, label_lengths)
     cost = torch.sum(costs)
     cost.backward()
-    # print(repr(acts.grad.data.cpu().numpy()))
+
     return costs.data.cpu().numpy(), acts.grad.data.cpu().numpy()
 
 

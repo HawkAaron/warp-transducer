@@ -20,9 +20,9 @@ class GpuRNNT {
 public:
     // Noncopyable
     GpuRNNT(int minibatch, int maxT, int maxU, int alphabet_size, void* workspace, 
-            int blank, int num_threads, CUstream stream) :
+            int blank, float fastemit_lambda, int num_threads, CUstream stream) :
         minibatch_(minibatch), maxT_(maxT), maxU_(maxU), alphabet_size_(alphabet_size), 
-        gpu_workspace(workspace), blank_(blank), num_threads_(num_threads), stream_(stream) {
+          gpu_workspace(workspace), blank_(blank), fastemit_lambda_(fastemit_lambda), num_threads_(num_threads), stream_(stream) {
 #if defined(RNNT_DISABLE_OMP) || defined(APPLE)
 #else
         if (num_threads > 0) {
@@ -65,6 +65,7 @@ private:
     int alphabet_size_; // Number of characters plus blank
     void* gpu_workspace;
     int blank_;
+    float fastemit_lambda_;
     int num_threads_;
     CUstream stream_;
     
@@ -195,9 +196,16 @@ GpuRNNT<ProbT>::compute_cost_and_score(const ProbT* const acts,
         start = std::chrono::high_resolution_clock::now();
 #endif
         // TODO optimize gradient kernel
-        compute_grad_kernel<128, ProbT><<<minibatch_ * maxT_ * maxU_, 128, 0, stream_>>>(grads, 
-            acts, denom, alphas, betas, llForward, input_lengths, label_lengths, labels, 
-            minibatch_, maxT_, maxU_, alphabet_size_, blank_);
+
+        if (fastemit_lambda_ > 0.0f) {
+            compute_fastemit_grad_kernel<128, ProbT><<<minibatch_ * maxT_ * maxU_, 128, 0, stream_>>>(grads, 
+                acts, denom, alphas, betas, llForward, input_lengths, label_lengths, labels, 
+                minibatch_, maxT_, maxU_, alphabet_size_, blank_, fastemit_lambda_);
+        } else {
+            compute_grad_kernel<128, ProbT><<<minibatch_ * maxT_ * maxU_, 128, 0, stream_>>>(grads, 
+                acts, denom, alphas, betas, llForward, input_lengths, label_lengths, labels, 
+                minibatch_, maxT_, maxU_, alphabet_size_, blank_);
+        }
 #if defined(DEBUG_TIME)
         cudaStreamSynchronize(stream_);
         end = std::chrono::high_resolution_clock::now();
